@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [side_a, side_b, gateway]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PlatformIO
+        uses: platformio/setup-platformio@v2
+
+      - name: Build
+        working-directory: firmware/${{ matrix.target }}
+        run: pio run

@@ -1,0 +1,13 @@
+{
+  "name": "mycobrain-mdp-common",
+  "version": "1.0.0",
+  "description": "MycoBrain MDP v1 common framing/types",
+  "keywords": "mdp,cobs,crc16,mycobrain",
+  "license": "MIT",
+  "frameworks": "arduino",
+  "platforms": "espressif32",
+  "build": {
+    "srcDir": ".",
+    "includeDir": "."
+  }
+}
