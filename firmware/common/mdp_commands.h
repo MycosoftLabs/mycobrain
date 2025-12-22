@@ -14,6 +14,11 @@ extern "C" {
 #define CMD_SAVE_NVS       0x0007
 #define CMD_LOAD_NVS       0x0008
 #define CMD_REBOOT         0x0009
+#define CMD_SET_CALIBRATION 0x000A
+#define CMD_SET_PINS        0x000B
+#define CMD_SET_THRESHOLDS  0x000C
+#define CMD_FACTORY_RESET   0x000D
+#define CMD_SET_WIFI        0x000E
 
 #ifdef __cplusplus
 }

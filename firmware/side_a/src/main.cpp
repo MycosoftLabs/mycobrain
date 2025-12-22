@@ -11,6 +11,13 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <Preferences.h>
+#include "portal/portal_manager.h"
+#include "portal/wifi_manager.h"
+#include "config/config_manager.h"
+#include "config/config_schema.h"
+#include "config/calibration.h"
+#include "telemetry/telemetry_json.h"
+#include <ArduinoJson.h>
 
 #define USE_SOFT_I2C 0
 #if USE_SOFT_I2C
@@ -181,6 +188,11 @@ static constexpr uint16_t CMD_SET_MOS        = 0x0004; // data: idx(u8 1..3), va
 static constexpr uint16_t CMD_SAVE_NVS       = 0x0007;
 static constexpr uint16_t CMD_LOAD_NVS       = 0x0008;
 static constexpr uint16_t CMD_REBOOT         = 0x0009;
+static constexpr uint16_t CMD_SET_CALIBRATION = 0x000A; // JSON calibration config
+static constexpr uint16_t CMD_SET_PINS        = 0x000B; // JSON pin config
+static constexpr uint16_t CMD_SET_THRESHOLDS  = 0x000C; // JSON threshold config
+static constexpr uint16_t CMD_FACTORY_RESET   = 0x000D; // Factory reset
+static constexpr uint16_t CMD_SET_WIFI        = 0x000E; // JSON WiFi config
 
 // ==============================
 //      Telemetry body (yours)
@@ -223,6 +235,11 @@ static BusFound found[4] = {};
 static BmeCandidate bme_on_bus[4] = {};
 
 static Preferences prefs;
+
+// Configuration storage
+static CalibrationConfig calibConfig;
+static PinConfig pinConfig;
+static ThresholdConfig thresholdConfig;
 
 static inline float adcCountsToVolts(uint16_t c) { return (float)c * (cfg::ADC_VREF / (float)cfg::ADC_MAX); }
 
@@ -315,16 +332,34 @@ static uint16_t readAdcClamped(int pin) {
   return (uint16_t)v;
 }
 static void updateAnalog() {
-  ai_counts[0] = readAdcClamped(cfg::PIN_AI1);
-  ai_counts[1] = readAdcClamped(cfg::PIN_AI2);
-  ai_counts[2] = readAdcClamped(cfg::PIN_AI3);
-  ai_counts[3] = readAdcClamped(cfg::PIN_AI4);
-  for (int i=0;i<4;i++) ai_volts[i] = adcCountsToVolts(ai_counts[i]);
+  // Use configured pins if available
+  int ai_pins[4] = {
+    pinConfig.ai_pins[0] > 0 ? pinConfig.ai_pins[0] : cfg::PIN_AI1,
+    pinConfig.ai_pins[1] > 0 ? pinConfig.ai_pins[1] : cfg::PIN_AI2,
+    pinConfig.ai_pins[2] > 0 ? pinConfig.ai_pins[2] : cfg::PIN_AI3,
+    pinConfig.ai_pins[3] > 0 ? pinConfig.ai_pins[3] : cfg::PIN_AI4
+  };
+  
+  ai_counts[0] = readAdcClamped(ai_pins[0]);
+  ai_counts[1] = readAdcClamped(ai_pins[1]);
+  ai_counts[2] = readAdcClamped(ai_pins[2]);
+  ai_counts[3] = readAdcClamped(ai_pins[3]);
+  
+  // Apply calibration
+  for (int i=0;i<4;i++) {
+    Calibration::applyCalibration(calibConfig, ai_counts[i], i, ai_volts[i]);
+  }
 }
 static void setMosfet(int idx, bool on) {
   if (idx<0 || idx>2) return;
   mos_state[idx]=on;
-  int pin = (idx==0)?cfg::PIN_MOS1:(idx==1)?cfg::PIN_MOS2:cfg::PIN_MOS3;
+  // Use configured pins if available
+  int mos_pins[3] = {
+    pinConfig.mos_pins[0] > 0 ? pinConfig.mos_pins[0] : cfg::PIN_MOS1,
+    pinConfig.mos_pins[1] > 0 ? pinConfig.mos_pins[1] : cfg::PIN_MOS2,
+    pinConfig.mos_pins[2] > 0 ? pinConfig.mos_pins[2] : cfg::PIN_MOS3
+  };
+  int pin = mos_pins[idx];
   digitalWrite(pin, on?HIGH:LOW);
 }
 
@@ -493,6 +528,71 @@ static void handleMdpPayload(const uint8_t* p, uint16_t len) {
         ESP.restart();
         break;
 
+      case CMD_SET_CALIBRATION: {
+        // Expect JSON string in cmd_data
+        if (cmdLen == 0) { status = -2; break; }
+        String jsonStr((const char*)data, cmdLen);
+        StaticJsonDocument<512> doc;
+        if (deserializeJson(doc, jsonStr) != DeserializationError::Ok) {
+          status = -4; break;
+        }
+        if (!ConfigManager::jsonToCalibration(doc.as<JsonObject>(), calibConfig)) {
+          status = -5; break;
+        }
+        ConfigManager::saveCalibration(calibConfig);
+      } break;
+
+      case CMD_SET_PINS: {
+        if (cmdLen == 0) { status = -2; break; }
+        String jsonStr((const char*)data, cmdLen);
+        StaticJsonDocument<256> doc;
+        if (deserializeJson(doc, jsonStr) != DeserializationError::Ok) {
+          status = -4; break;
+        }
+        if (!ConfigManager::jsonToPinConfig(doc.as<JsonObject>(), pinConfig)) {
+          status = -5; break;
+        }
+        ConfigManager::savePinConfig(pinConfig);
+        // Note: Pin changes require reboot to take effect
+      } break;
+
+      case CMD_SET_THRESHOLDS: {
+        if (cmdLen == 0) { status = -2; break; }
+        String jsonStr((const char*)data, cmdLen);
+        StaticJsonDocument<256> doc;
+        if (deserializeJson(doc, jsonStr) != DeserializationError::Ok) {
+          status = -4; break;
+        }
+        if (!ConfigManager::jsonToThresholds(doc.as<JsonObject>(), thresholdConfig)) {
+          status = -5; break;
+        }
+        ConfigManager::saveThresholds(thresholdConfig);
+      } break;
+
+      case CMD_SET_WIFI: {
+        if (cmdLen == 0) { status = -2; break; }
+        String jsonStr((const char*)data, cmdLen);
+        StaticJsonDocument<512> doc;
+        if (deserializeJson(doc, jsonStr) != DeserializationError::Ok) {
+          status = -4; break;
+        }
+        WiFiConfig wifiConfig;
+        if (!ConfigManager::jsonToWiFiConfig(doc.as<JsonObject>(), wifiConfig)) {
+          status = -5; break;
+        }
+        ConfigManager::saveWiFiConfig(wifiConfig);
+        WiFiManager::updateConfig(wifiConfig);
+        // Note: WiFi changes may require reboot
+      } break;
+
+      case CMD_FACTORY_RESET:
+        ConfigManager::factoryReset();
+        // Reset local configs to defaults
+        ConfigManager::getDefaultCalibration(calibConfig);
+        ConfigManager::getDefaultPinConfig(pinConfig);
+        ConfigManager::getDefaultThresholds(thresholdConfig);
+        break;
+
       default:
         status = -1;
         break;
@@ -591,8 +691,8 @@ static void sendTelemetry(uint32_t now) {
     t.bme_chip[b] = bme_on_bus[b].present ? bme_on_bus[b].chip_id : 0;
   }
 
-  t.i2c_sda[0] = (int8_t)cfg::I2C0_SDA;
-  t.i2c_scl[0] = (int8_t)cfg::I2C0_SCL;
+  t.i2c_sda[0] = pinConfig.i2c_sda > 0 ? pinConfig.i2c_sda : (int8_t)cfg::I2C0_SDA;
+  t.i2c_scl[0] = pinConfig.i2c_scl > 0 ? pinConfig.i2c_scl : (int8_t)cfg::I2C0_SCL;
 
   // Wrap in MDP payload: header + telemetry body
   uint8_t out[cfg::MAX_PAYLOAD];
@@ -615,6 +715,9 @@ static void sendTelemetry(uint32_t now) {
   // If you want reliable telemetry on UART, set ACK_REQUESTED and enqueue.
   // For now: best-effort (no queue), but we still piggyback ack field.
   uartSendCOBS(out, total);
+  
+  // Broadcast to portal WebSocket
+  PortalManager::updateTelemetry(&t);
 }
 
 // ==============================
@@ -635,10 +738,26 @@ void setup() {
   pinMode(cfg::PIN_MOS3, OUTPUT);
   setMosfet(0,false); setMosfet(1,false); setMosfet(2,false);
 
-  I2C0.begin(cfg::I2C0_SDA, cfg::I2C0_SCL, cfg::I2C_HW_FREQ_HZ);
+  // Load configurations
+  ConfigManager::begin();
+  ConfigManager::loadCalibration(calibConfig);
+  ConfigManager::loadPinConfig(pinConfig);
+  ConfigManager::loadThresholds(thresholdConfig);
+  
+  // Use configured I2C pins if available
+  int i2c_sda = pinConfig.i2c_sda > 0 ? pinConfig.i2c_sda : cfg::I2C0_SDA;
+  int i2c_scl = pinConfig.i2c_scl > 0 ? pinConfig.i2c_scl : cfg::I2C0_SCL;
+  I2C0.begin(i2c_sda, i2c_scl, cfg::I2C_HW_FREQ_HZ);
 
   loadScanFromNVS();
   scanAllI2C();
+
+  // Initialize portal
+  if (!PortalManager::begin()) {
+    Serial.println("{\"portal\":\"init_failed\"}");
+  } else {
+    Serial.println("{\"portal\":\"ready\"}");
+  }
 
   lastTelem = millis();
   lastScan  = millis();
@@ -651,6 +770,9 @@ void loop() {
 
   rxPollCOBS();
   updateAnalog();
+
+  // Portal loop (non-blocking)
+  PortalManager::loop();
 
   if (now - lastScan >= cfg::I2C_RESCAN_MS) {
     lastScan = now;
