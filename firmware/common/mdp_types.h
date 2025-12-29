@@ -22,7 +22,10 @@ enum MdpMsgType : uint8_t {
   MDP_COMMAND   = 0x02,
   MDP_ACK       = 0x03,
   MDP_EVENT     = 0x05,
-  MDP_HELLO     = 0x06
+  MDP_HELLO     = 0x06,
+  MDP_WIFISENSE = 0x07,  // WiFi Sense telemetry
+  MDP_DRONE_TELEMETRY = 0x08,  // Drone telemetry
+  MDP_DRONE_MISSION_STATUS = 0x09  // Drone mission status
 };
 
 // Flags
