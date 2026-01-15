@@ -1,174 +1,166 @@
-# mycobrain
-Core hardware motherboard for mycosoft hardware
+# MycoBrain - Environmental IoT Sensor Platform
 
-# MycoBrain V1 — Bring‑Up, Firmware, and Operation (Mycosoft)
+> **Version**: 2.0.0  
+> **Last Updated**: 2026-01-15T14:30:00Z
 
 ## Overview
 
-MycoBrain V1 is a dual‑ESP32‑S3 controller board with an integrated SX1262 LoRa radio. It is designed as a modular biological‑sensor and actuator backbone for Mycosoft devices including Mushroom 1, SporeBase, Petraeus, and MycoNodes.
+MycoBrain is Mycosoft's IoT environmental sensing platform based on the ESP32-S3 microcontroller. It provides real-time environmental monitoring for:
 
-The board is intentionally split into two logical compute roles:
+- Temperature & Humidity
+- Air Quality (VOCs, CO2)
+- Barometric Pressure
+- Light Levels
+- Volatile Compound Analysis (smell training)
 
-* **Side‑A (Sensor MCU)** — owns sensors, I2C, analog inputs, and MOSFET outputs.
-* **Side‑B (Router MCU)** — routes data between Side‑A and the outside world (LoRa / gateway), manages acknowledgements, retries, and command delivery.
+## 🔧 Hardware Configuration
 
-This document explains how to wire, flash, and operate MycoBrain V1 using the current hardened firmware stack.
+### ESP32-S3 Dev Module Settings (Arduino IDE)
 
----
+| Setting | Value |
+|---------|-------|
+| Board | ESP32S3 Dev Module |
+| USB CDC on boot | Enabled |
+| USB DFU on boot | Enabled |
+| USB Mode | UART0/Hardware CDC |
+| JTAG Adapter | Integrated USB JTAG |
+| PSRAM | OPI PSRAM |
+| CPU Frequency | 240 MHz |
+| Flash Mode | QIO @ 80 MHz |
+| Flash Size | 16 MB |
+| Partition Scheme | 16MB flash, 3MB app/9.9MB FATFS |
+| Upload Speed | 921600 |
 
-## Hardware Architecture
+### Pin Assignments
 
-### Major Components
+| Function | GPIO |
+|----------|------|
+| NeoPixel LED (SK6805) | 15 |
+| Buzzer | 16 |
+| I2C SDA | 5 |
+| I2C SCL | 4 |
+| MOSFET Outputs | 12, 13, 14 |
+| Analog Inputs | 6, 7, 10, 11 |
+| Serial TXD0/RXD0 | 43/44 |
+| Serial TXD1/RXD1 | 17/18 |
+| Serial TXD2/RXD2 | 8/9 |
 
-* 2× ESP32‑S3‑WROOM‑1U modules (ESP‑1 and ESP‑2)
-* 1× SX1262 LoRa module (SPI)
-* Multiple JST‑PH connectors for:
+### BME688 Dual Sensor Setup
 
-  * I2C (DI)
-  * Analog Inputs (AI)
-  * MOSFET Outputs (AO)
-  * Battery (BATT) and Solar (SOL)
-* Dual USB‑C ports (UART‑0 and UART‑2)
+Two BME688 sensors with different I2C addresses:
+- **AMB (Ambient)**: Address 0x77
+- **ENV (Environment)**: Address 0x76
 
-### Functional Split
+Solder bridge on each sensor determines address.
 
-| MCU        | Role                                                   |
-| ---------- | ------------------------------------------------------ |
-| ESP‑Side‑A | Sensors, I2C scanning, analog sampling, MOSFET control |
-| ESP‑Side‑B | UART↔LoRa routing, reliability, command channel        |
+## 📁 Firmware
 
----
+### Side A (Standard Operation)
+```
+firmware/sideA_firmware.cpp
+```
+Standard environmental monitoring mode.
 
-## Connector & Wiring Conventions
+### Side B (Science/Comms)
+```
+firmware/sideB_firmware.cpp
+```
+Advanced science and communication mode with:
+- Extended telemetry
+- OTA updates
+- Remote configuration
 
-### I2C Cable Color Legend (Bring‑Up Standard)
+## 🔌 WebSocket Protocol
 
-* **Black** → GND
-* **Red** → 5 V
-* **Orange** → 3.3 V
-* **Yellow** → SCL
-* **Green** → SDA
+MycoBrain devices connect to the website via WebSocket:
 
-### Sensor Addressing (BME680/688)
+```
+ws://mycosoft.com:8765/ws/{device_id}
+```
 
-* Default I2C addresses: **0x76** and **0x77**
-* Two sensors may share one bus if one is strapped to each address.
+### Message Format
 
-### Power Safety
+```json
+{
+  "type": "telemetry",
+  "device_id": "mycobrain-001",
+  "timestamp": "2026-01-15T14:30:00Z",
+  "data": {
+    "temperature": 22.5,
+    "humidity": 65.0,
+    "pressure": 1013.25,
+    "iaq": 85,
+    "co2_equivalent": 450,
+    "voc_equivalent": 0.5
+  }
+}
+```
 
-Many Bosch BME breakout boards are **3.3 V logic**. If uncertain:
+### Commands
 
-* Power sensors from **3.3 V (orange)**
-* Always share common GND
+| Command | Description |
+|---------|-------------|
+| `led:color:RRGGBB` | Set LED color |
+| `buzzer:tone:freq:duration` | Play tone |
+| `config:interval:ms` | Set telemetry interval |
+| `reboot` | Restart device |
+| `ota:url` | Start OTA update |
 
----
+## 🔗 Website Integration
 
-## SX1262 LoRa Pin Mapping (Confirmed)
+MycoBrain devices are managed via:
+- `/devices` - Device list and status
+- `/devices/{id}` - Device details
+- `/dashboard/crep` - Real-time map view
 
-From MycoBrain V1 schematic:
+## 📡 API Endpoints
 
-| SX1262 Signal | ESP32‑S3 GPIO              |
-| ------------- | -------------------------- |
-| SCK           | GPIO 9                     |
-| MOSI          | GPIO 8 (practical default) |
-| MISO          | GPIO 12                    |
-| NSS / CS      | GPIO 13                    |
-| DIO1          | GPIO 14                    |
-| DIO2          | GPIO 11                    |
-| BUSY          | GPIO 10                    |
-| RESET         | Not wired (RadioLib NC)    |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/mycobrain/devices` | GET | List devices |
+| `/api/mycobrain/devices/{id}` | GET | Device details |
+| `/api/mycobrain/devices/{id}/telemetry` | GET | Historical data |
+| `/api/mycobrain/devices/{id}/command` | POST | Send command |
 
-This mapping is used by Side‑B and Gateway firmware.
+## 🔧 CLI Commands (Firmware)
 
----
+| Command | Description |
+|---------|-------------|
+| `status` | Show device status |
+| `sensors` | Read all sensors |
+| `wifi:ssid:password` | Configure WiFi |
+| `i2c <sda> <scl> [hz]` | Scan I2C bus |
+| `led <r> <g> <b>` | Set LED color |
+| `reboot` | Restart device |
 
-## Firmware Stack
+## 📚 Documentation
 
-### Side‑A Firmware
+- [Firmware Features](../WEBSITE/website/docs/MYCOBRAIN_FIRMWARE_FEATURES.md)
+- [Integration Guide](../WEBSITE/website/docs/MYCOBRAIN_INTEGRATION_COMPLETE.md)
+- [Sensor Library](../WEBSITE/website/docs/MYCOBRAIN_SENSOR_LIBRARY.md)
 
-* Periodic telemetry generation
-* I2C scanning + Bosch chip‑ID probing
-* Analog input sampling (AI1‑AI4)
-* MOSFET output control (AO1‑AO3)
-* Command execution from Side‑B
-* UART transport using MDP v1 (COBS + CRC)
+## 🔨 Building Firmware
 
-### Side‑B Firmware
+1. Install Arduino IDE 2.x
+2. Add ESP32 board support
+3. Install libraries:
+   - BSEC2
+   - Adafruit NeoPixel
+   - ArduinoJson
+   - WebSockets
+4. Open `sideA_firmware.cpp` or `sideB_firmware.cpp`
+5. Select ESP32S3 Dev Module
+6. Configure settings as above
+7. Upload
 
-* UART receiver from Side‑A
-* LoRa transmitter (uplink telemetry)
-* LoRa receiver (downlink commands)
-* ACK + retransmit logic
-* Command routing to Side‑A
+## 📝 Changelog
 
-### Gateway Firmware (Optional)
+### 2026-01-15
+- Integrated with CREP dashboard
+- Added real-time device markers on map
+- Enhanced WebSocket reconnection logic
+- Added dual BME688 sensor support
 
-* LoRa receiver + USB serial output
-* Command injection over LoRa
-* NDJSON‑friendly output for ingestion
+## 📜 License
 
----
-
-## Communication Protocol (Summary)
-
-All MycoBrain V1 devices communicate using **MDP v1 (Mycosoft Device Protocol)**:
-
-* Binary payloads
-* **COBS framing**
-* **0x00 frame delimiter**
-* **CRC16‑CCITT** integrity
-* Cumulative ACK + retry support
-
-Detailed protocol specification is provided in **MycoBrainV1‑Protocol.md**.
-
----
-
-## Bring‑Up Checklist
-
-1. Power board via USB‑C
-2. Flash Side‑A and Side‑B firmware
-3. Attach BME sensor to I2C port
-4. Confirm I2C scan shows 0x76 / 0x77
-5. Confirm Side‑B forwards telemetry
-6. (Optional) Power gateway and verify LoRa RX
-
----
-
-## Troubleshooting
-
-### No I2C Devices Found
-
-* Check SDA/SCL orientation
-* Lower I2C speed to 100 kHz
-* Verify pull‑ups and sensor power
-
-### LoRa Not Transmitting
-
-* Verify SX1262 pin mapping
-* Check frequency (915 vs 868 MHz)
-* Ensure RadioLib initialization succeeds
-
-### ESP32‑S3 Serial Issues
-
-* Confirm correct USB port (CDC vs UART bridge)
-* Enable USB‑CDC‑on‑boot if required
-
----
-
-## Stability Rules (Hard‑Won Lessons)
-
-1. Freeze I2C pin assignments
-2. Always use COBS framing for binary data
-3. Telemetry = best‑effort; Commands = reliable
-4. Avoid floats in long‑term protocols
-5. Log everything as NDJSON at the gateway
-
----
-
-## Intended Use
-
-MycoBrain V1 is designed as a **general‑purpose biological computing and sensing backbone**, not a single‑purpose board. Firmware roles may evolve, but the Side‑A / Side‑B split and MDP protocol are foundational.
-
----
-
-© Mycosoft, Inc. — MycoBrain V1
+Copyright © 2026 Mycosoft. All rights reserved.
