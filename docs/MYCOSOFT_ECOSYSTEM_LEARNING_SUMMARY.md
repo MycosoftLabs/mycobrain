@@ -312,8 +312,8 @@ MycoBrain (ESP32)
 - `MAS_API_BASE_URL=http://localhost:8001`
 - `MINDEX_API_BASE_URL=http://localhost:8002`
 - `NATUREOS_API_URL=http://localhost:3000`
-- `MAS_API_KEY=dev-secret`
-- `MINDEX_API_KEY=dev-secret`
+- `MAS_API_KEY=REPLACE_WITH_SECURE_VALUE`
+- `MINDEX_API_KEY=REPLACE_WITH_SECURE_VALUE`
 
 ### Deployment Targets
 
@@ -446,4 +446,3 @@ All components communicate via well-defined APIs and protocols, making it straig
 **Document Version**: 1.0  
 **Last Updated**: 2025-01-XX  
 **Author**: AI Assistant (Cursor)
-
