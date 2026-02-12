@@ -11,6 +11,13 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <Preferences.h>
+#include <mbedtls/sha256.h>
+#include <time.h>
+
+// NeoPixel and Buzzer modules (Side A peripherals)
+#include "config.h"
+#include "pixel.h"
+#include "buzzer.h"
 
 #define USE_SOFT_I2C 0
 #if USE_SOFT_I2C
@@ -104,6 +111,19 @@ constexpr uint32_t I2C_RESCAN_MS       = 5000;
 constexpr bool USE_NVS = true;
 static const char* NVS_NS = "mycobrain_a";
 
+// Device identity (role + display name)
+static const char* NVS_DEVICE_ROLE_KEY = "dev_role";
+static const char* NVS_DEVICE_DISPLAY_NAME_KEY = "dev_disp";
+
+// Default device role (can be overridden by NVS or compile-time)
+// Values: mushroom1, sporebase, hyphae1, alarm, gateway, mycodrone, standalone
+#ifndef CONFIG_DEVICE_ROLE_DEFAULT
+#define CONFIG_DEVICE_ROLE_DEFAULT "standalone"
+#endif
+#ifndef CONFIG_DEVICE_DISPLAY_NAME_DEFAULT
+#define CONFIG_DEVICE_DISPLAY_NAME_DEFAULT ""
+#endif
+
 // MDP
 constexpr uint16_t MDP_MAGIC = 0xA15A;
 constexpr uint8_t  MDP_VER   = 1;
@@ -181,6 +201,20 @@ static constexpr uint16_t CMD_SET_MOS        = 0x0004; // data: idx(u8 1..3), va
 static constexpr uint16_t CMD_SAVE_NVS       = 0x0007;
 static constexpr uint16_t CMD_LOAD_NVS       = 0x0008;
 static constexpr uint16_t CMD_REBOOT         = 0x0009;
+static constexpr uint16_t CMD_SET_DEVICE_ROLE = 0x000A; // data: null-terminated string (max 31 chars)
+static constexpr uint16_t CMD_SET_DEVICE_DISPLAY_NAME = 0x000B; // data: null-terminated string (max 63 chars)
+static constexpr uint16_t CMD_GET_DEVICE_IDENTITY = 0x000C; // response: device_role + device_display_name
+
+// NeoPixel commands
+static constexpr uint16_t CMD_PIXEL_SET_COLOR = 0x0010;    // data: r(u8), g(u8), b(u8)
+static constexpr uint16_t CMD_PIXEL_SET_BRIGHTNESS = 0x0011; // data: brightness(u8)
+static constexpr uint16_t CMD_PIXEL_PATTERN = 0x0012;       // data: pattern name (null-terminated)
+static constexpr uint16_t CMD_PIXEL_OFF = 0x0013;          // no data
+
+// Buzzer commands
+static constexpr uint16_t CMD_BUZZER_TONE = 0x0020;        // data: freq(u16), duration_ms(u16)
+static constexpr uint16_t CMD_BUZZER_PATTERN = 0x0021;     // data: pattern name (null-terminated)
+static constexpr uint16_t CMD_BUZZER_STOP = 0x0022;        // no data
 
 // ==============================
 //      Telemetry body (yours)
@@ -223,8 +257,235 @@ static BusFound found[4] = {};
 static BmeCandidate bme_on_bus[4] = {};
 
 static Preferences prefs;
+static Preferences durablePrefs;
+
+// ==============================
+//  Device Identity (role/config)
+// ==============================
+static char deviceRole[32] = CONFIG_DEVICE_ROLE_DEFAULT;
+static char deviceDisplayName[64] = CONFIG_DEVICE_DISPLAY_NAME_DEFAULT;
+
+static void loadDeviceIdentity() {
+  if (!cfg::USE_NVS) return;
+  if (!prefs.begin(cfg::NVS_NS, true)) return;
+  
+  String role = prefs.getString(cfg::NVS_DEVICE_ROLE_KEY, CONFIG_DEVICE_ROLE_DEFAULT);
+  strncpy(deviceRole, role.c_str(), sizeof(deviceRole) - 1);
+  deviceRole[sizeof(deviceRole) - 1] = '\0';
+  
+  String disp = prefs.getString(cfg::NVS_DEVICE_DISPLAY_NAME_KEY, CONFIG_DEVICE_DISPLAY_NAME_DEFAULT);
+  strncpy(deviceDisplayName, disp.c_str(), sizeof(deviceDisplayName) - 1);
+  deviceDisplayName[sizeof(deviceDisplayName) - 1] = '\0';
+  
+  prefs.end();
+}
+
+static void saveDeviceIdentity() {
+  if (!cfg::USE_NVS) return;
+  if (!prefs.begin(cfg::NVS_NS, false)) return;
+  prefs.putString(cfg::NVS_DEVICE_ROLE_KEY, deviceRole);
+  prefs.putString(cfg::NVS_DEVICE_DISPLAY_NAME_KEY, deviceDisplayName);
+  prefs.end();
+}
+
+static void setDeviceRole(const char* role) {
+  if (!role) return;
+  strncpy(deviceRole, role, sizeof(deviceRole) - 1);
+  deviceRole[sizeof(deviceRole) - 1] = '\0';
+  saveDeviceIdentity();
+}
+
+static void setDeviceDisplayName(const char* name) {
+  if (!name) return;
+  strncpy(deviceDisplayName, name, sizeof(deviceDisplayName) - 1);
+  deviceDisplayName[sizeof(deviceDisplayName) - 1] = '\0';
+  saveDeviceIdentity();
+}
 
 static inline float adcCountsToVolts(uint16_t c) { return (float)c * (cfg::ADC_VREF / (float)cfg::ADC_MAX); }
+
+// ==============================
+//  Envelope + durable replay
+// ==============================
+namespace durable_cfg {
+constexpr int QUEUE_CAPACITY = 8;
+constexpr size_t SLOT_BYTES = cfg::MAX_PAYLOAD;
+static const char* NVS_NS = "myco_a_q";
+static const char* KEY_HEAD = "head";
+static const char* KEY_TAIL = "tail";
+static const char* KEY_COUNT = "count";
+static const char* KEY_TXSEQ = "txseq";
+}
+
+static uint8_t durableHead = 0;
+static uint8_t durableTail = 0;
+static uint8_t durableCount = 0;
+static bool durableReady = false;
+
+static void toHex(const uint8_t* data, size_t len, char* outHex, size_t outHexCap) {
+  size_t pos = 0;
+  for (size_t i = 0; i < len && (pos + 2) < outHexCap; i++) {
+    pos += (size_t)snprintf(outHex + pos, outHexCap - pos, "%02x", data[i]);
+  }
+  if (pos < outHexCap) outHex[pos] = '\0';
+}
+
+static bool base64Encode(const uint8_t* src, size_t len, char* out, size_t outCap) {
+  static const char table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  size_t outLen = 4 * ((len + 2) / 3);
+  if (outLen + 1 > outCap) return false;
+  size_t j = 0;
+  for (size_t i = 0; i < len; i += 3) {
+    uint32_t a = src[i];
+    uint32_t b = (i + 1 < len) ? src[i + 1] : 0;
+    uint32_t c = (i + 2 < len) ? src[i + 2] : 0;
+    uint32_t triple = (a << 16) | (b << 8) | c;
+
+    out[j++] = table[(triple >> 18) & 0x3F];
+    out[j++] = table[(triple >> 12) & 0x3F];
+    out[j++] = (i + 1 < len) ? table[(triple >> 6) & 0x3F] : '=';
+    out[j++] = (i + 2 < len) ? table[triple & 0x3F] : '=';
+  }
+  out[j] = '\0';
+  return true;
+}
+
+static void sha256Bytes(const uint8_t* data, size_t len, uint8_t out[32]) {
+  mbedtls_sha256_context ctx;
+  mbedtls_sha256_init(&ctx);
+  mbedtls_sha256_starts_ret(&ctx, 0);
+  mbedtls_sha256_update_ret(&ctx, data, len);
+  mbedtls_sha256_finish_ret(&ctx, out);
+  mbedtls_sha256_free(&ctx);
+}
+
+static bool buildTelemetryEnvelope(uint32_t now, uint32_t seq, uint8_t* out, uint16_t* outLen) {
+  if (!out || !outLen) return false;
+  // Unsigned envelope body (stable key order) with device identity.
+  char unsignedBody[768];
+  
+  // Build display name JSON field (null if empty)
+  char dispNameField[96] = "";
+  if (deviceDisplayName[0] != '\0') {
+    snprintf(dispNameField, sizeof(dispNameField), ",\"device_display_name\":\"%s\"", deviceDisplayName);
+  }
+  
+  int unsignedN = snprintf(
+    unsignedBody, sizeof(unsignedBody),
+    "{\"hdr\":{\"deviceId\":\"mycobrain-side-a\",\"device_role\":\"%s\"%s,\"proto\":\"uart\",\"msgId\":\"%08lu\"},"
+    "\"ts\":{\"utc\":\"%lu\",\"mono_ms\":%lu},"
+    "\"seq\":%lu,"
+    "\"pack\":["
+      "{\"id\":\"ai1\",\"v\":%.4f,\"u\":\"V\"},"
+      "{\"id\":\"ai2\",\"v\":%.4f,\"u\":\"V\"},"
+      "{\"id\":\"ai3\",\"v\":%.4f,\"u\":\"V\"},"
+      "{\"id\":\"ai4\",\"v\":%.4f,\"u\":\"V\"},"
+      "{\"id\":\"mos1\",\"v\":%d,\"u\":\"bool\"},"
+      "{\"id\":\"mos2\",\"v\":%d,\"u\":\"bool\"},"
+      "{\"id\":\"mos3\",\"v\":%d,\"u\":\"bool\"}"
+    "],"
+    "\"meta\":{\"schema\":\"mycosoft.v1\",\"units\":\"si\"}}",
+    deviceRole, dispNameField,
+    (unsigned long)seq,
+    (unsigned long)(time(nullptr)),
+    (unsigned long)now,
+    (unsigned long)seq,
+    ai_volts[0], ai_volts[1], ai_volts[2], ai_volts[3],
+    mos_state[0] ? 1 : 0, mos_state[1] ? 1 : 0, mos_state[2] ? 1 : 0
+  );
+  if (unsignedN <= 0 || (size_t)unsignedN >= sizeof(unsignedBody)) return false;
+
+  uint8_t hashRaw[32];
+  sha256Bytes((const uint8_t*)unsignedBody, (size_t)unsignedN, hashRaw);
+  char hashHex[65];
+  toHex(hashRaw, sizeof(hashRaw), hashHex, sizeof(hashHex));
+
+  // Device-side placeholder signature for local bring-up:
+  // Once secure key provisioning lands, replace with real ed25519 signature.
+  char sigB64[96];
+  if (!base64Encode(hashRaw, sizeof(hashRaw), sigB64, sizeof(sigB64))) return false;
+
+  int finalN = snprintf(
+    (char*)out, cfg::MAX_PAYLOAD,
+    "%s,\"hash\":\"sha256:%s\",\"sig\":\"ed25519:%s\"}",
+    unsignedBody, hashHex, sigB64
+  );
+  if (finalN <= 0 || finalN >= (int)cfg::MAX_PAYLOAD) return false;
+
+  *outLen = (uint16_t)finalN;
+  return true;
+}
+
+static void durableLoadMeta() {
+  durableHead = durablePrefs.getUChar(durable_cfg::KEY_HEAD, 0);
+  durableTail = durablePrefs.getUChar(durable_cfg::KEY_TAIL, 0);
+  durableCount = durablePrefs.getUChar(durable_cfg::KEY_COUNT, 0);
+}
+
+static void durableSaveMeta() {
+  if (!durableReady) return;
+  durablePrefs.putUChar(durable_cfg::KEY_HEAD, durableHead);
+  durablePrefs.putUChar(durable_cfg::KEY_TAIL, durableTail);
+  durablePrefs.putUChar(durable_cfg::KEY_COUNT, durableCount);
+}
+
+static int durableEnqueue(const uint8_t* payload, uint16_t len, uint32_t seq) {
+  if (!durableReady) return -1;
+  if (!payload || len == 0 || len > durable_cfg::SLOT_BYTES) return -1;
+  if (durableCount >= durable_cfg::QUEUE_CAPACITY) {
+    durableTail = (uint8_t)((durableTail + 1) % durable_cfg::QUEUE_CAPACITY);
+    durableCount--;
+  }
+  int slot = durableHead;
+  char kSeq[8], kLen[8], kDat[8];
+  snprintf(kSeq, sizeof(kSeq), "q%u_s", (unsigned)slot);
+  snprintf(kLen, sizeof(kLen), "q%u_l", (unsigned)slot);
+  snprintf(kDat, sizeof(kDat), "q%u_d", (unsigned)slot);
+  durablePrefs.putULong(kSeq, seq);
+  durablePrefs.putUShort(kLen, len);
+  durablePrefs.putBytes(kDat, payload, len);
+  durableHead = (uint8_t)((durableHead + 1) % durable_cfg::QUEUE_CAPACITY);
+  durableCount++;
+  durableSaveMeta();
+  return slot;
+}
+
+static void durableAck(uint32_t ackSeq) {
+  if (!durableReady) return;
+  while (durableCount > 0) {
+    char kSeq[8];
+    snprintf(kSeq, sizeof(kSeq), "q%u_s", (unsigned)durableTail);
+    uint32_t slotSeq = durablePrefs.getULong(kSeq, 0);
+    if (slotSeq == 0 || slotSeq > ackSeq) break;
+    durableTail = (uint8_t)((durableTail + 1) % durable_cfg::QUEUE_CAPACITY);
+    durableCount--;
+  }
+  durableSaveMeta();
+}
+
+static void durableReplayInit() {
+  if (!durableReady) return;
+  // Re-enqueue any durable messages that weren't acked before reboot.
+  for (uint8_t i = 0; i < durableCount; i++) {
+    uint8_t slot = (uint8_t)((durableTail + i) % durable_cfg::QUEUE_CAPACITY);
+    char kLen[8], kDat[8];
+    snprintf(kLen, sizeof(kLen), "q%u_l", (unsigned)slot);
+    snprintf(kDat, sizeof(kDat), "q%u_d", (unsigned)slot);
+    uint16_t len = durablePrefs.getUShort(kLen, 0);
+    if (len == 0 || len > durable_cfg::SLOT_BYTES) continue;
+    uint8_t buf[cfg::MAX_PAYLOAD];
+    size_t got = durablePrefs.getBytes(kDat, buf, len);
+    if (got != len) continue;
+
+    // Extract MDP header to recover seq.
+    if (len < sizeof(mdp_hdr_v1_t)) continue;
+    auto* hdr = (const mdp_hdr_v1_t*)buf;
+    if (hdr->magic != cfg::MDP_MAGIC || hdr->version != cfg::MDP_VER) continue;
+
+    txEnqueue(buf, len, hdr->seq, true);
+    uartSendCOBS(buf, len);
+  }
+}
 
 static bool i2cReadReg_HW(TwoWire& bus, uint8_t addr, uint8_t reg, uint8_t& outVal) {
   bus.beginTransmission(addr);
@@ -372,6 +633,8 @@ static void txFreeAcked(uint32_t ackVal) {
   for (auto &it : txq) {
     if (it.used && it.seq != 0 && it.seq <= ackVal) it.used=false;
   }
+  // Mirror delivery progress into the durable replay queue.
+  durableAck(ackVal);
 }
 
 static void txEnqueue(const uint8_t* payload, uint16_t len, uint32_t seq, bool ackReq) {
@@ -493,6 +756,74 @@ static void handleMdpPayload(const uint8_t* p, uint16_t len) {
         ESP.restart();
         break;
 
+      case CMD_SET_DEVICE_ROLE: {
+        if (cmdLen < 1) { status = -2; break; }
+        char role[32] = {0};
+        size_t copyLen = (cmdLen < sizeof(role)-1) ? cmdLen : sizeof(role)-1;
+        memcpy(role, data, copyLen);
+        role[copyLen] = '\0';
+        setDeviceRole(role);
+      } break;
+
+      case CMD_SET_DEVICE_DISPLAY_NAME: {
+        if (cmdLen < 1) { status = -2; break; }
+        char name[64] = {0};
+        size_t copyLen = (cmdLen < sizeof(name)-1) ? cmdLen : sizeof(name)-1;
+        memcpy(name, data, copyLen);
+        name[copyLen] = '\0';
+        setDeviceDisplayName(name);
+      } break;
+
+      case CMD_GET_DEVICE_IDENTITY:
+        // Response will include device_role and device_display_name in the event data
+        // For now, just acknowledge success
+        break;
+
+      // NeoPixel commands
+      case CMD_PIXEL_SET_COLOR: {
+        if (cmdLen < 3) { status = -2; break; }
+        Pixel::setColor(data[0], data[1], data[2]);
+      } break;
+
+      case CMD_PIXEL_SET_BRIGHTNESS: {
+        if (cmdLen < 1) { status = -2; break; }
+        Pixel::setBrightness(data[0]);
+      } break;
+
+      case CMD_PIXEL_PATTERN: {
+        if (cmdLen < 1) { status = -2; break; }
+        char pattern[32] = {0};
+        size_t copyLen = (cmdLen < sizeof(pattern)-1) ? cmdLen : sizeof(pattern)-1;
+        memcpy(pattern, data, copyLen);
+        pattern[copyLen] = '\0';
+        Pixel::startPattern(pattern);
+      } break;
+
+      case CMD_PIXEL_OFF:
+        Pixel::off();
+        break;
+
+      // Buzzer commands
+      case CMD_BUZZER_TONE: {
+        if (cmdLen < 4) { status = -2; break; }
+        uint16_t freq = (uint16_t)data[0] | ((uint16_t)data[1] << 8);
+        uint16_t dur = (uint16_t)data[2] | ((uint16_t)data[3] << 8);
+        Buzzer::tone(freq, dur);
+      } break;
+
+      case CMD_BUZZER_PATTERN: {
+        if (cmdLen < 1) { status = -2; break; }
+        char pattern[32] = {0};
+        size_t copyLen = (cmdLen < sizeof(pattern)-1) ? cmdLen : sizeof(pattern)-1;
+        memcpy(pattern, data, copyLen);
+        pattern[copyLen] = '\0';
+        Buzzer::playPattern(pattern);
+      } break;
+
+      case CMD_BUZZER_STOP:
+        Buzzer::stop();
+        break;
+
       default:
         status = -1;
         break;
@@ -571,49 +902,28 @@ static void mdpSendAckOnly(uint32_t now) {
 }
 
 static void sendTelemetry(uint32_t now) {
-  // Build TelemetryV1 body
-  TelemetryV1 t{};
-  t.magic = cfg::MDP_MAGIC;
-  t.proto = 1;
-  t.msg_type = 1;
-  t.seq = 0; // legacy field unused for routing; we use MDP header seq
-  t.uptime_ms = now;
-
-  for (int i=0;i<4;i++) { t.ai_counts[i] = ai_counts[i]; t.ai_volts[i] = ai_volts[i]; }
-  t.mos[0] = mos_state[0]?1:0;
-  t.mos[1] = mos_state[1]?1:0;
-  t.mos[2] = mos_state[2]?1:0;
-
-  for (int b=0;b<4;b++) {
-    t.i2c_count[b] = found[b].count;
-    for (int i=0;i<16;i++) t.i2c_addrs[b][i] = found[b].addrs[i];
-    t.bme_addr[b] = bme_on_bus[b].present ? bme_on_bus[b].addr : 0;
-    t.bme_chip[b] = bme_on_bus[b].present ? bme_on_bus[b].chip_id : 0;
-  }
-
-  t.i2c_sda[0] = (int8_t)cfg::I2C0_SDA;
-  t.i2c_scl[0] = (int8_t)cfg::I2C0_SCL;
-
-  // Wrap in MDP payload: header + telemetry body
+  // Build deterministic envelope payload (JSON for bring-up; CBOR in later revision)
   uint8_t out[cfg::MAX_PAYLOAD];
-  if (sizeof(mdp_hdr_v1_t) + sizeof(TelemetryV1) > sizeof(out)) return;
+  uint16_t envLen = 0;
 
   auto* h = (mdp_hdr_v1_t*)out;
   h->magic = cfg::MDP_MAGIC;
   h->version = cfg::MDP_VER;
   h->msg_type = MDP_TELEMETRY;
   h->seq = tx_seq++;
+  if (durableReady) durablePrefs.putULong(durable_cfg::KEY_TXSEQ, tx_seq);
   h->ack = peer_last_inorder;
-  h->flags = 0;                 // telemetry best-effort by default
+  h->flags = ACK_REQUESTED;     // request ACK so durability can advance
   h->src = cfg::EP_SIDE_A;
   h->dst = cfg::EP_SIDE_B;
   h->rsv = 0;
 
-  memcpy(out + sizeof(mdp_hdr_v1_t), &t, sizeof(TelemetryV1));
-  uint16_t total = (uint16_t)(sizeof(mdp_hdr_v1_t) + sizeof(TelemetryV1));
+  if (!buildTelemetryEnvelope(now, h->seq, out + sizeof(mdp_hdr_v1_t), &envLen)) return;
+  uint16_t total = (uint16_t)(sizeof(mdp_hdr_v1_t) + envLen);
 
-  // If you want reliable telemetry on UART, set ACK_REQUESTED and enqueue.
-  // For now: best-effort (no queue), but we still piggyback ack field.
+  // Persist and enqueue for replay across reboot.
+  (void)durableEnqueue(out, total, h->seq);
+  txEnqueue(out, total, h->seq, true);
   uartSendCOBS(out, total);
 }
 
@@ -627,6 +937,25 @@ void setup() {
   delay(50);
 
   Serial2.begin(cfg::LINK_BAUD, SERIAL_8N1, cfg::PIN_RX2, cfg::PIN_TX2);
+
+  // Durable queue NVS (survives reboot/power loss)
+  if (durablePrefs.begin(durable_cfg::NVS_NS, false)) {
+    durableReady = true;
+    durableLoadMeta();
+    tx_seq = durablePrefs.getULong(durable_cfg::KEY_TXSEQ, tx_seq);
+    durableReplayInit();
+  }
+
+  // Load device identity (role, display name) from NVS
+  loadDeviceIdentity();
+
+  // Initialize NeoPixel and Buzzer (Side A peripherals)
+  Pixel::init();
+  Buzzer::init();
+  
+  // Brief startup indication
+  Pixel::setColor(0, 32, 0);  // Green startup
+  Buzzer::playPattern(PATTERN_SUCCESS);
 
   analogReadResolution(12);
 
@@ -643,7 +972,18 @@ void setup() {
   lastTelem = millis();
   lastScan  = millis();
 
-  Serial.println("{\"side\":\"A\",\"mdp\":\"v1\",\"status\":\"ready\"}");
+  // Status with device identity for service parsing
+  char statusJson[256];
+  if (deviceDisplayName[0] != '\0') {
+    snprintf(statusJson, sizeof(statusJson),
+      "{\"side\":\"A\",\"mdp\":\"v1\",\"device_role\":\"%s\",\"device_display_name\":\"%s\",\"status\":\"ready\"}",
+      deviceRole, deviceDisplayName);
+  } else {
+    snprintf(statusJson, sizeof(statusJson),
+      "{\"side\":\"A\",\"mdp\":\"v1\",\"device_role\":\"%s\",\"status\":\"ready\"}",
+      deviceRole);
+  }
+  Serial.println(statusJson);
 }
 
 void loop() {
@@ -651,6 +991,10 @@ void loop() {
 
   rxPollCOBS();
   updateAnalog();
+
+  // Update NeoPixel and Buzzer patterns (non-blocking)
+  Pixel::updatePattern();
+  Buzzer::updatePattern();
 
   if (now - lastScan >= cfg::I2C_RESCAN_MS) {
     lastScan = now;

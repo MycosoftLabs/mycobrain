@@ -1,0 +1,88 @@
+.create table SensorRaw (
+  IngestedAt: datetime,
+  EnqueuedTime: datetime,
+  DeviceId: string,
+  MsgId: string,
+  Proto: string,
+  Seq: long,
+  TimeUtc: datetime,
+  MonoMs: long,
+  Lat: real,
+  Lon: real,
+  AccM: real,
+  Body: dynamic,
+  RawCborB64: string,
+  HashB64: string,
+  SigB64: string
+)
+
+.create table SensorPoints (
+  Time: datetime,
+  DeviceId: string,
+  SensorId: string,
+  Value: real,
+  Unit: string,
+  Quality: string,
+  Lat: real,
+  Lon: real,
+  Seq: long,
+  MsgId: string,
+  Proto: string,
+  MonoMs: long,
+  IngestedAt: datetime
+)
+
+.create table SensorRaw ingestion json mapping 'SensorRawMapping'
+[
+  {"column":"IngestedAt","Properties":{"path":"$.ingestedAt"}},
+  {"column":"EnqueuedTime","Properties":{"path":"$.enqueuedTime"}},
+  {"column":"DeviceId","Properties":{"path":"$.deviceId"}},
+  {"column":"MsgId","Properties":{"path":"$.msgId"}},
+  {"column":"Proto","Properties":{"path":"$.proto"}},
+  {"column":"Seq","Properties":{"path":"$.seq"}},
+  {"column":"TimeUtc","Properties":{"path":"$.timeUtc"}},
+  {"column":"MonoMs","Properties":{"path":"$.monoMs"}},
+  {"column":"Lat","Properties":{"path":"$.lat"}},
+  {"column":"Lon","Properties":{"path":"$.lon"}},
+  {"column":"AccM","Properties":{"path":"$.accM"}},
+  {"column":"Body","Properties":{"path":"$.body"}},
+  {"column":"RawCborB64","Properties":{"path":"$.rawCborB64"}},
+  {"column":"HashB64","Properties":{"path":"$.hashB64"}},
+  {"column":"SigB64","Properties":{"path":"$.sigB64"}}
+]
+
+.create-or-alter function with (folder='myco') Myco_ExpandRaw() {
+  SensorRaw
+  | extend env = Body
+  | mv-expand reading = env.pack
+  | extend
+      Time = todatetime(env.ts.utc),
+      SensorId = tostring(reading.id),
+      Unit = tostring(reading.u),
+      Quality = tostring(reading.q),
+      Value = todouble(reading.v),
+      Lat2 = todouble(env.geo.lat),
+      Lon2 = todouble(env.geo.lon)
+  | project
+      Time,
+      DeviceId,
+      SensorId,
+      Value,
+      Unit,
+      Quality,
+      Lat = iif(isnull(Lat), Lat2, Lat),
+      Lon = iif(isnull(Lon), Lon2, Lon),
+      Seq,
+      MsgId,
+      Proto,
+      MonoMs,
+      IngestedAt
+}
+
+.alter table SensorPoints policy update
+@'[{
+  "IsEnabled": true,
+  "Source": "SensorRaw",
+  "Query": "Myco_ExpandRaw()",
+  "IsTransactional": true
+}]'

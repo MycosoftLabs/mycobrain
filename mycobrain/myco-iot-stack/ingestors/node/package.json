@@ -1,0 +1,19 @@
+{
+  "name": "myco-iothub-adx-ingestor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@azure/event-hubs": "^5.12.2",
+    "azure-kusto-data": "^5.0.0",
+    "azure-kusto-ingest": "^5.0.0",
+    "cbor": "^10.0.3",
+    "@noble/ed25519": "^3.0.0",
+    "lru-cache": "^11.0.2",
+    "dotenv": "^16.4.5"
+  }
+}

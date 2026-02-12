@@ -1,0 +1,41 @@
+{
+  "schema": "mycosoft.envelope_ack.v1",
+  "envelope_required_fields": [
+    "hdr",
+    "ts",
+    "seq",
+    "pack",
+    "hash",
+    "sig"
+  ],
+  "hdr_required_fields": [
+    "deviceId",
+    "proto",
+    "msgId"
+  ],
+  "hash_algorithms": [
+    "sha256",
+    "blake2b256"
+  ],
+  "signature_scheme": "ed25519",
+  "signature_prefix": "MYCO1",
+  "replay_ack": {
+    "required_fields": [
+      "deviceId",
+      "msgId",
+      "seq",
+      "accepted",
+      "ackedAtUtc"
+    ],
+    "semantics": {
+      "accepted_true": "Device advances durable replay tail",
+      "accepted_false": "Device retries or tombstones by local policy"
+    }
+  },
+  "dedupe_key": "deviceId:seq:msgId",
+  "timestamp_fields": {
+    "device_time": "ts.utc",
+    "monotonic_time_ms": "ts.mono_ms",
+    "ingress_time": "enqueuedAtUtc"
+  }
+}

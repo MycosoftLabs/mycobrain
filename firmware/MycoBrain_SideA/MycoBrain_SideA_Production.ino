@@ -30,6 +30,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <ArduinoJson.h>
+#include <Preferences.h>
 #include "soc/rtc_cntl_reg.h" // For brownout detector
 
 // ============================================================================
@@ -73,6 +74,23 @@
 static const uint32_t BOOT_SERIAL_WAIT_MS = 2000;
 
 // ============================================================================
+// Device Identity Configuration
+// ============================================================================
+// NVS namespace for device settings
+#define NVS_NAMESPACE "mycobrain"
+#define NVS_DEVICE_ROLE_KEY "dev_role"
+#define NVS_DEVICE_DISPLAY_NAME_KEY "dev_disp"
+
+// Default device role (can be overridden by NVS or compile-time)
+// Values: mushroom1, sporebase, hyphae1, alarm, gateway, mycodrone, standalone
+#ifndef CONFIG_DEVICE_ROLE_DEFAULT
+#define CONFIG_DEVICE_ROLE_DEFAULT "standalone"
+#endif
+#ifndef CONFIG_DEVICE_DISPLAY_NAME_DEFAULT
+#define CONFIG_DEVICE_DISPLAY_NAME_DEFAULT ""
+#endif
+
+// ============================================================================
 // Global Variables
 // ============================================================================
 String deviceMac = "";
@@ -108,6 +126,51 @@ struct BME688Data {
 
 // Command buffer
 String commandBuffer = "";
+
+// NVS Preferences for device settings
+Preferences prefs;
+
+// Device identity (role + display name)
+char deviceRole[32] = CONFIG_DEVICE_ROLE_DEFAULT;
+char deviceDisplayName[64] = CONFIG_DEVICE_DISPLAY_NAME_DEFAULT;
+
+// ============================================================================
+// Device Identity Functions
+// ============================================================================
+void loadDeviceIdentity() {
+  if (!prefs.begin(NVS_NAMESPACE, true)) return;
+  
+  String role = prefs.getString(NVS_DEVICE_ROLE_KEY, CONFIG_DEVICE_ROLE_DEFAULT);
+  strncpy(deviceRole, role.c_str(), sizeof(deviceRole) - 1);
+  deviceRole[sizeof(deviceRole) - 1] = '\0';
+  
+  String disp = prefs.getString(NVS_DEVICE_DISPLAY_NAME_KEY, CONFIG_DEVICE_DISPLAY_NAME_DEFAULT);
+  strncpy(deviceDisplayName, disp.c_str(), sizeof(deviceDisplayName) - 1);
+  deviceDisplayName[sizeof(deviceDisplayName) - 1] = '\0';
+  
+  prefs.end();
+}
+
+void saveDeviceIdentity() {
+  if (!prefs.begin(NVS_NAMESPACE, false)) return;
+  prefs.putString(NVS_DEVICE_ROLE_KEY, deviceRole);
+  prefs.putString(NVS_DEVICE_DISPLAY_NAME_KEY, deviceDisplayName);
+  prefs.end();
+}
+
+void setDeviceRole(const char* role) {
+  if (!role) return;
+  strncpy(deviceRole, role, sizeof(deviceRole) - 1);
+  deviceRole[sizeof(deviceRole) - 1] = '\0';
+  saveDeviceIdentity();
+}
+
+void setDeviceDisplayName(const char* name) {
+  if (!name) return;
+  strncpy(deviceDisplayName, name, sizeof(deviceDisplayName) - 1);
+  deviceDisplayName[sizeof(deviceDisplayName) - 1] = '\0';
+  saveDeviceIdentity();
+}
 
 // ============================================================================
 // Setup
@@ -154,6 +217,9 @@ void setup() {
            (uint8_t)(chipid >> 24), (uint8_t)(chipid >> 16),
            (uint8_t)(chipid >> 8), (uint8_t)chipid);
   deviceMac = String(macStr);
+  
+  // Load device identity from NVS
+  loadDeviceIdentity();
   
   // Initial I2C scan
   scanI2C();
@@ -276,6 +342,61 @@ void processCommand(String cmd) {
     } else {
       sendI2CScanResult();
     }
+    return;
+  }
+  
+  // Plaintext CLI commands (for December 29 firmware compatibility)
+  cmd.toLowerCase();
+  if (cmd == "coin") {
+    tone(BUZZER_PIN, 800, 100);
+    delay(100);
+    tone(BUZZER_PIN, 1000, 100);
+    sendAck("coin", "Playing");
+    return;
+  }
+  if (cmd == "bump") {
+    tone(BUZZER_PIN, 200, 50);
+    sendAck("bump", "Playing");
+    return;
+  }
+  if (cmd == "power") {
+    tone(BUZZER_PIN, 600, 200);
+    sendAck("power", "Playing");
+    return;
+  }
+  if (cmd == "1up") {
+    tone(BUZZER_PIN, 523, 150);
+    delay(150);
+    tone(BUZZER_PIN, 659, 150);
+    delay(150);
+    tone(BUZZER_PIN, 784, 150);
+    sendAck("1up", "Playing");
+    return;
+  }
+  if (cmd == "morgio") {
+    tone(BUZZER_PIN, 440, 100);
+    delay(100);
+    tone(BUZZER_PIN, 554, 100);
+    delay(100);
+    tone(BUZZER_PIN, 659, 200);
+    sendAck("morgio", "Playing");
+    return;
+  }
+  if (cmd.startsWith("led rgb")) {
+    int r = 0, g = 0, b = 0;
+    sscanf(cmd.c_str(), "led rgb %d %d %d", &r, &g, &b);
+    if (r > 0 || g > 0 || b > 0) {
+      digitalWrite(NEOPIXEL_PIN, HIGH);
+      sendAck("led", "rgb " + String(r) + " " + String(g) + " " + String(b));
+    } else {
+      digitalWrite(NEOPIXEL_PIN, LOW);
+      sendAck("led", "off");
+    }
+    return;
+  }
+  if (cmd == "led off") {
+    digitalWrite(NEOPIXEL_PIN, LOW);
+    sendAck("led", "off");
     return;
   }
   
@@ -475,6 +596,34 @@ void processCommand(String cmd) {
     delay(1000);
     ESP.restart();
   }
+  else if (command == "set_device_role") {
+    String role = doc["role"] | "";
+    if (role.length() > 0) {
+      setDeviceRole(role.c_str());
+      sendAck("set_device_role", role);
+    } else {
+      sendError("set_device_role requires 'role' parameter");
+    }
+  }
+  else if (command == "set_device_display_name") {
+    String name = doc["name"] | "";
+    setDeviceDisplayName(name.c_str());
+    sendAck("set_device_display_name", name);
+  }
+  else if (command == "get_device_identity") {
+    DynamicJsonDocument respDoc(256);
+    respDoc["type"] = "device_identity";
+    respDoc["device_role"] = deviceRole;
+    if (strlen(deviceDisplayName) > 0) {
+      respDoc["device_display_name"] = deviceDisplayName;
+    }
+    respDoc["ts"] = millis();
+    if (currentMode == MODE_MACHINE && jsonFormat) {
+      sendNDJSON(respDoc);
+    } else {
+      sendResponse("device_identity", respDoc);
+    }
+  }
   else {
     sendError("Unknown command: " + command);
   }
@@ -502,6 +651,12 @@ void sendTelemetry() {
     
     // Board ID (MAC address)
     doc["board_id"] = deviceMac;
+    
+    // Device identity
+    doc["device_role"] = deviceRole;
+    if (strlen(deviceDisplayName) > 0) {
+      doc["device_display_name"] = deviceDisplayName;
+    }
     
     // Analog inputs
     doc["ai1_voltage"] = ai1;
@@ -682,6 +837,12 @@ void sendStatus() {
     doc["debug"] = debugEnabled;
     doc["json_format"] = jsonFormat;
     
+    // Device identity
+    doc["device_role"] = deviceRole;
+    if (strlen(deviceDisplayName) > 0) {
+      doc["device_display_name"] = deviceDisplayName;
+    }
+    
     // Add peripheral count
     doc["peripherals"] = i2cAddressCount;
     
@@ -699,6 +860,10 @@ void sendStatus() {
     doc["firmware"] = FIRMWARE_VERSION;
     doc["uptime"] = uptimeSeconds;
     doc["telemetry_interval"] = telemetryInterval / 1000;
+    doc["device_role"] = deviceRole;
+    if (strlen(deviceDisplayName) > 0) {
+      doc["device_display_name"] = deviceDisplayName;
+    }
     
     sendResponse("status", doc);
   }

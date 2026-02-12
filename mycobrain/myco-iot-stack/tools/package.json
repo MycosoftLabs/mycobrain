@@ -1,0 +1,9 @@
+{
+  "name": "myco-tools",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@noble/ed25519": "^3.0.0"
+  }
+}

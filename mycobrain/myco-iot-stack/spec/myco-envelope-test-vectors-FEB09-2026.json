@@ -1,0 +1,73 @@
+{
+  "schema": "mycosoft.test_vectors.v1",
+  "vectors": [
+    {
+      "name": "valid_sha256_signed_stub",
+      "description": "Valid structure vector with deterministic JSON ordering and sha256 hash.",
+      "envelope": {
+        "hdr": {
+          "deviceId": "myco-01",
+          "proto": "mqtt",
+          "msgId": "f4a7f0e2-c2a6-4cdb-bb8c-bf6b497f03d4"
+        },
+        "ts": {
+          "utc": "2026-02-09T08:00:00.000Z",
+          "mono_ms": 155010
+        },
+        "seq": 101,
+        "pack": [
+          {
+            "id": "temp",
+            "v": 21.7,
+            "u": "C"
+          }
+        ],
+        "meta": {
+          "schema": "mycosoft.v1",
+          "units": "si"
+        },
+        "hash": "sha256:4f8f4d283d84ca3f95c67be9ea145f4a13057a0ca44f4f093f96f2d5ca01eb2b",
+        "sig": "ed25519:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+      },
+      "expected": {
+        "structure_valid": true,
+        "hash_valid": false,
+        "signature_valid": false
+      }
+    },
+    {
+      "name": "invalid_missing_pack",
+      "description": "Missing pack array must fail structure validation.",
+      "envelope": {
+        "hdr": {
+          "deviceId": "myco-01",
+          "proto": "lorawan",
+          "msgId": "00000000-0000-0000-0000-000000000001"
+        },
+        "ts": {
+          "utc": "2026-02-09T08:02:00.000Z",
+          "mono_ms": 155400
+        },
+        "seq": 102,
+        "hash": "sha256:00",
+        "sig": "ed25519:AA=="
+      },
+      "expected": {
+        "structure_valid": false,
+        "error_prefix": "missing_keys"
+      }
+    },
+    {
+      "name": "replay_ack_accept",
+      "description": "Canonical successful replay ack contract example.",
+      "ack": {
+        "deviceId": "myco-01",
+        "msgId": "f4a7f0e2-c2a6-4cdb-bb8c-bf6b497f03d4",
+        "seq": 101,
+        "accepted": true,
+        "reason": null,
+        "ackedAtUtc": "2026-02-09T08:00:02.000Z"
+      }
+    }
+  ]
+}

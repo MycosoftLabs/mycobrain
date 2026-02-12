@@ -1,0 +1,17 @@
+// Latest 100 points for a device
+SensorPoints
+| where DeviceId == "myco-node-001"
+| order by Time desc
+| take 100
+
+// Dedupe check: count by MsgId
+SensorRaw
+| summarize cnt=count() by MsgId
+| where cnt > 1
+
+// Sensor time vs ingestion time
+SensorRaw
+| extend DeviceTime = todatetime(Body.ts.utc)
+| extend LagSeconds = datetime_diff('second', IngestedAt, DeviceTime)
+| summarize avg(LagSeconds), p95=percentile(LagSeconds, 95) by DeviceId
+
