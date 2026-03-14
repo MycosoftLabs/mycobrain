@@ -53,22 +53,20 @@ Two BME688 sensors with different I2C addresses:
 
 Solder bridge on each sensor determines address.
 
-## 📁 Firmware
+## 📁 Firmware (v2.0.0 MDP Production)
 
-### Side A (Standard Operation)
-```
-firmware/sideA_firmware.cpp
-```
-Standard environmental monitoring mode.
+Production firmware uses **MDP v1** (COBS framing, CRC-16) for Side A ↔ Jetson ↔ Side B.
 
-### Side B (Science/Comms)
-```
-firmware/sideB_firmware.cpp
-```
-Advanced science and communication mode with:
-- Extended telemetry
-- OTA updates
-- Remote configuration
+| Build | Path | Purpose |
+|-------|------|---------|
+| **Side A** | `firmware/MycoBrain_SideA_MDP/` | Sensor MCU (mushroom1, hyphae1 roles) |
+| **Side B** | `firmware/MycoBrain_SideB_MDP/` | Router MCU (UART bridge) |
+| **Shared** | `firmware/common_mdp/` | MDP codec |
+
+See **[firmware/README.md](firmware/README.md)** for:
+- Flash procedure (`scripts/flash-mycobrain-production.ps1`)
+- Jetson integration (Mushroom 1, Hyphae 1, Gateway)
+- MDP and NLM interactions
 
 ## 🔌 WebSocket Protocol
 
@@ -135,23 +133,26 @@ MycoBrain devices are managed via:
 
 ## 📚 Documentation
 
-- [Firmware Features](../WEBSITE/website/docs/MYCOBRAIN_FIRMWARE_FEATURES.md)
-- [Integration Guide](../WEBSITE/website/docs/MYCOBRAIN_INTEGRATION_COMPLETE.md)
-- [Sensor Library](../WEBSITE/website/docs/MYCOBRAIN_SENSOR_LIBRARY.md)
+- [Firmware README](firmware/README.md) — v2.0.0 layout, flash procedure, Jetson integration
+- [MDP Protocol Contracts](docs/MDP_PROTOCOL_CONTRACTS_MAR07_2026.md) — MDP rail and gateway upstream
+- [Jetson Production Deploy](docs/JETSON_MYCOBRAIN_PRODUCTION_DEPLOY_MAR13_2026.md) — BOM, wiring, Jetson setup
+- [Firmware Architecture](docs/FIRMWARE_ARCHITECTURE_FEB10_2026.md)
 
-## 🔨 Building Firmware
+## 🔨 Building and Flashing Firmware
 
-1. Install Arduino IDE 2.x
-2. Add ESP32 board support
-3. Install libraries:
-   - BSEC2
-   - Adafruit NeoPixel
-   - ArduinoJson
-   - WebSockets
-4. Open `sideA_firmware.cpp` or `sideB_firmware.cpp`
-5. Select ESP32S3 Dev Module
-6. Configure settings as above
-7. Upload
+1. Install **PlatformIO** (`pip install platformio` or VS Code PlatformIO extension)
+2. USB drivers for ESP32-S3 (CP210x/CH340)
+3. From repo root:
+   ```powershell
+   # Mushroom 1
+   .\scripts\flash-mycobrain-production.ps1 -Board SideA -Role mushroom1 -Port COM7
+   # Hyphae 1
+   .\scripts\flash-mycobrain-production.ps1 -Board SideA -Role hyphae1 -Port COM7
+   # Side B
+   .\scripts\flash-mycobrain-production.ps1 -Board SideB -Port COM8
+   ```
+
+See [firmware/README.md](firmware/README.md) for full procedure.
 
 ## 📝 Changelog
 
