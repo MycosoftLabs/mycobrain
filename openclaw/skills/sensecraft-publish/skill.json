@@ -1,0 +1,18 @@
+{
+  "name": "sensecraft-publish",
+  "version": "1.0.0",
+  "description": "Publishes MycoBrain telemetry to Seeed SenseCraft Data Platform via MQTT. Enables real-time dashboard on sensecap.seeed.cc and SenseCraft mobile app.",
+  "author": "Mycosoft Labs",
+  "tools": [
+    {
+      "name": "sensecraft_publish",
+      "description": "Publish current sensor telemetry to SenseCraft Data Platform.",
+      "parameters": {}
+    },
+    {
+      "name": "sensecraft_status",
+      "description": "Check SenseCraft MQTT connection status.",
+      "parameters": {}
+    }
+  ]
+}

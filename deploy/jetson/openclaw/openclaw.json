@@ -1,0 +1,51 @@
+{
+  "$schema": "https://openclaw.ai/schema/config.json",
+  "name": "mycobrain-openclaw",
+  "description": "MycoBrain IoT platform control via OpenClaw AI agent",
+
+  "model": "anthropic/claude-sonnet-4-20250514",
+
+  "skills": [
+    "mycobrain-control",
+    "sensecraft-publish"
+  ],
+
+  "serial": {
+    "port": "/dev/ttyTHS1",
+    "baud": 115200,
+    "comment": "UART to MycoBrain Side B ESP32-S3"
+  },
+
+  "channels": {
+    "telegram": {
+      "enabled": false,
+      "comment": "Set TELEGRAM_BOT_TOKEN env var to enable"
+    },
+    "discord": {
+      "enabled": false,
+      "comment": "Set DISCORD_BOT_TOKEN env var to enable"
+    },
+    "webchat": {
+      "enabled": true,
+      "port": 18789
+    },
+    "voice": {
+      "enabled": true,
+      "comment": "Requires reSpeaker XVF3800 connected via USB"
+    }
+  },
+
+  "sensecraft": {
+    "enabled": false,
+    "comment": "Set SENSECRAFT_ORG_ID, SENSECRAFT_API_KEY, SENSECRAFT_DEVICE_EUI env vars to enable",
+    "broker": "sensecap-openstream.seeed.cc",
+    "port": 1883,
+    "publish_interval_s": 60
+  },
+
+  "safety": {
+    "estop_on_disconnect": true,
+    "max_claw_force_adc": 3000,
+    "comment": "Estop all outputs if OpenClaw gateway loses serial connection"
+  }
+}

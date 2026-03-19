@@ -11,6 +11,7 @@
 #include "bsec2.h"
 #include "config.h"
 #include "mdp_codec.h"
+#include "mdp_claw.h"
 
 #define USE_EXTERNAL_BLOB 1
 #if USE_EXTERNAL_BLOB
@@ -84,6 +85,9 @@ struct SensorSlot {
 static SensorSlot S_AMB;
 static SensorSlot S_ENV;
 static uint8_t bme688_count = 0;
+
+// Nemo Claw controller
+static ClawController g_claw;
 
 static bool slotInit(SensorSlot& s);  // forward decl for CLI i2c command
 
@@ -413,6 +417,8 @@ static void printCliHelp() {
   Serial.println("  live on|off [period_ms]");
   Serial.println("  dbg on|off   - throttled debug print");
   Serial.println("  fmt lines|json");
+  Serial.println("  claw grip|release|status");
+  Serial.println("  claw pos <0-180>  - set servo angle");
   Serial.println();
 }
 
@@ -578,6 +584,41 @@ static void handleCliCommand(const char* line) {
     Serial.printf("fmt %s\n", g_fmt == FMT_NDJSON ? "json" : "lines");
     return;
   }
+  if (strcmp(cmd, "claw") == 0) {
+    while (line[pos] == ' ' || line[pos] == '\t') pos++;
+    int s2 = pos;
+    while (line[pos] && line[pos] != ' ' && line[pos] != '\t') pos++;
+    char sub2[16];
+    int sl2 = pos - s2;
+    if (sl2 >= (int)sizeof(sub2)) sl2 = (int)sizeof(sub2) - 1;
+    memcpy(sub2, line + s2, sl2);
+    sub2[sl2] = '\0';
+    if (!g_claw.isInitialized()) {
+      Serial.println("claw: not initialized (no servo pin or PCA9685)");
+      return;
+    }
+    if (strcmp(sub2, "grip") == 0) {
+      g_claw.grip();
+      Serial.printf("claw: grip -> pos=%d\n", g_claw.getPosition());
+    } else if (strcmp(sub2, "release") == 0) {
+      g_claw.release();
+      Serial.printf("claw: release -> pos=%d\n", g_claw.getPosition());
+    } else if (strcmp(sub2, "pos") == 0) {
+      while (line[pos] == ' ' || line[pos] == '\t') pos++;
+      int angle = atoi(line + pos);
+      g_claw.setPosition((uint8_t)constrain(angle, 0, 180));
+      Serial.printf("claw: pos=%d\n", g_claw.getPosition());
+    } else if (strcmp(sub2, "status") == 0) {
+      ClawStatus cs = g_claw.getStatus();
+      Serial.printf("claw: pos=%d closed=%s force=%u mode=%s cal=%s\n",
+                     cs.position, cs.is_closed ? "yes" : "no", cs.force_adc,
+                     cs.mode == CLAW_MODE_GPIO ? "gpio" : (cs.mode == CLAW_MODE_PCA9685 ? "pca9685" : "none"),
+                     cs.calibrated ? "yes" : "no");
+    } else {
+      Serial.println("claw grip|release|pos <angle>|status");
+    }
+    return;
+  }
   Serial.println("Unknown command. Type 'help' for list.");
 }
 
@@ -719,6 +760,7 @@ void send_hello(uint32_t ack_seq = 0) {
   capabilities.add("buzzer");
   capabilities.add("output_control");
   capabilities.add("estop");
+  if (g_claw.isInitialized()) capabilities.add("claw");
 
   send_frame(MDP_HELLO, ack_seq, 0, doc);
 }
@@ -766,6 +808,15 @@ void send_telemetry(uint32_t ack_seq = 0) {
     if (!isnan(S_ENV.r.iaq)) b2["iaq"] = S_ENV.r.iaq;
     if (!isnan(S_ENV.r.co2eq)) b2["co2_equivalent"] = S_ENV.r.co2eq;
     if (!isnan(S_ENV.r.voc)) b2["voc_equivalent"] = S_ENV.r.voc;
+  }
+
+  if (g_claw.isInitialized()) {
+    JsonObject claw = doc.createNestedObject("claw");
+    ClawStatus cs = g_claw.getStatus();
+    claw["position"] = cs.position;
+    claw["is_closed"] = cs.is_closed;
+    claw["force_adc"] = cs.force_adc;
+    claw["mode"] = cs.mode == CLAW_MODE_GPIO ? "gpio" : (cs.mode == CLAW_MODE_PCA9685 ? "pca9685" : "none");
   }
 
   send_frame(MDP_TELEMETRY, ack_seq, 0, doc);
@@ -857,6 +908,64 @@ void handle_command(const MdpHeader& hdr, DynamicJsonDocument& payload) {
     send_ack(hdr.seq, true, "peripheral_state_recorded");
     return;
   }
+  // Nemo Claw commands (MicoLatch gripper + OpenClaw integration)
+  if (strcmp(cmd, "claw_grip") == 0 || strcmp(cmd, "drone_latch_payload") == 0) {
+    if (!g_claw.isInitialized()) {
+      send_ack(hdr.seq, false, "claw_not_initialized");
+      return;
+    }
+    if (estop_active) {
+      send_ack(hdr.seq, false, "estop_active");
+      return;
+    }
+    g_claw.grip();
+    send_ack(hdr.seq, true, "claw_gripped");
+    return;
+  }
+  if (strcmp(cmd, "claw_release") == 0 || strcmp(cmd, "drone_release_payload") == 0) {
+    if (!g_claw.isInitialized()) {
+      send_ack(hdr.seq, false, "claw_not_initialized");
+      return;
+    }
+    g_claw.release();
+    send_ack(hdr.seq, true, "claw_released");
+    return;
+  }
+  if (strcmp(cmd, "claw_position") == 0) {
+    if (!g_claw.isInitialized()) {
+      send_ack(hdr.seq, false, "claw_not_initialized");
+      return;
+    }
+    if (estop_active) {
+      send_ack(hdr.seq, false, "estop_active");
+      return;
+    }
+    int angle = params["angle"] | -1;
+    if (angle < 0 || angle > 180) {
+      send_ack(hdr.seq, false, "invalid_angle");
+      return;
+    }
+    g_claw.setPosition((uint8_t)angle);
+    send_ack(hdr.seq, true, "claw_position_set");
+    return;
+  }
+  if (strcmp(cmd, "claw_status") == 0) {
+    StaticJsonDocument<256> statusDoc;
+    statusDoc["type"] = "claw_status";
+    if (g_claw.isInitialized()) {
+      ClawStatus cs = g_claw.getStatus();
+      statusDoc["position"] = cs.position;
+      statusDoc["is_closed"] = cs.is_closed;
+      statusDoc["force_adc"] = cs.force_adc;
+      statusDoc["mode"] = cs.mode == CLAW_MODE_GPIO ? "gpio" : (cs.mode == CLAW_MODE_PCA9685 ? "pca9685" : "none");
+      statusDoc["calibrated"] = cs.calibrated;
+    } else {
+      statusDoc["initialized"] = false;
+    }
+    send_frame(MDP_TELEMETRY, hdr.seq, 0, statusDoc);
+    if (hdr.flags & ACK_REQUESTED) send_ack(hdr.seq, true, "claw_status_sent");
+    return;
+  }
 
   send_ack(hdr.seq, false, "unknown_command");
 }
@@ -889,6 +998,18 @@ void setup() {
 
   initBuzzer();
   initSensors();
+
+  // Initialize Nemo Claw: try PCA9685 first (I2C 0x40), fallback to direct GPIO
+  Wire.beginTransmission(CLAW_PCA9685_ADDR);
+  if (Wire.endTransmission() == 0) {
+    if (g_claw.initPca9685(Wire, CLAW_PCA9685_ADDR, CLAW_PCA9685_CHANNEL, CLAW_FORCE_ADC_PIN)) {
+      Serial.println("Claw: PCA9685 initialized");
+    }
+  } else {
+    g_claw.initGpio(CLAW_SERVO_PIN, CLAW_FORCE_ADC_PIN);
+    Serial.println("Claw: GPIO servo initialized");
+  }
+
   send_hello();
 }
 
@@ -931,6 +1052,9 @@ void loop() {
     }
   }
   if (g_led_mode == LEDMODE_STATE) ledStateUpdate();
+
+  // Nemo claw state machine tick
+  g_claw.tick();
 
   if (millis() - last_stream_ms >= stream_interval_ms) {
     send_telemetry();
