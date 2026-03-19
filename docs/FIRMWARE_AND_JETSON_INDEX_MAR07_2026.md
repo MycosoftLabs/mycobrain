@@ -12,6 +12,7 @@
 | [firmware/README.md](../firmware/README.md) | Production MDP layout, flash procedure, Jetson integration |
 | [FIRMWARE_ARCHITECTURE_FEB10_2026.md](FIRMWARE_ARCHITECTURE_FEB10_2026.md) | Side A/B, common_mdp, build structure |
 | [MDP_PROTOCOL_CONTRACTS_MAR07_2026.md](MDP_PROTOCOL_CONTRACTS_MAR07_2026.md) | MDP rail, COBS, CRC-16, gateway upstream |
+| [GARRET_MORGIO_TO_MDP_PORT_INVENTORY_MAR06_2026.md](GARRET_MORGIO_TO_MDP_PORT_INVENTORY_MAR06_2026.md) | Garret morgio CLI/features to port into MDP Side A without breaking protocol |
 
 ---
 

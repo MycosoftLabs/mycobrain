@@ -26,9 +26,22 @@
   #define ARRAY_LEN(x) (sizeof(x) / sizeof((x)[0]))
 #endif
 
-static const char* FW_VERSION = "side-a-mdp-2.0.0";
+static const char* FW_VERSION = "side-a-mdp-2.1.0";
 static const uint32_t WDT_TIMEOUT_S = 30;
 static const uint32_t SERIAL_BAUD = 115200;
+
+// Garret morgio CLI state
+enum OutputFormat : uint8_t { FMT_LINES = 0, FMT_NDJSON = 1 };
+static OutputFormat g_fmt = FMT_LINES;
+static bool g_live_on = false;
+static uint32_t g_live_period_ms = 1000;
+static uint32_t g_last_live_ms = 0;
+static bool g_dbg = false;
+static uint32_t g_last_dbg_ms = 0;
+static const uint32_t g_dbg_period_ms = 3000;
+enum LedMode : uint8_t { LEDMODE_OFF = 0, LEDMODE_STATE = 1, LEDMODE_MANUAL = 2 };
+static LedMode g_led_mode = LEDMODE_STATE;
+static uint8_t g_led_r = 0, g_led_g = 0, g_led_b = 0;
 
 // NeoPixel
 #define PIXEL_COUNT 1
@@ -71,6 +84,8 @@ struct SensorSlot {
 static SensorSlot S_AMB;
 static SensorSlot S_ENV;
 static uint8_t bme688_count = 0;
+
+static bool slotInit(SensorSlot& s);  // forward decl for CLI i2c command
 
 // State
 static bool estop_active = false;
@@ -134,6 +149,13 @@ static void slotCallbackCommon(SensorSlot& s, const bme68xData data, const bsecO
         break;
     }
   }
+  if (g_dbg) {
+    uint32_t now = millis();
+    if (now - g_last_dbg_ms >= g_dbg_period_ms) {
+      g_last_dbg_ms = now;
+      Serial.printf("#dbg %s T=%.2f RH=%.2f P=%.2f gas=%.0f\n", s.name, s.r.tC, s.r.rh, s.r.p_hPa, s.r.gas_ohm);
+    }
+  }
 }
 
 static void cbAMB(const bme68xData data, const bsecOutputs outputs, const Bsec2 /*bsec*/) {
@@ -142,6 +164,429 @@ static void cbAMB(const bme68xData data, const bsecOutputs outputs, const Bsec2 
 
 static void cbENV(const bme68xData data, const bsecOutputs outputs, const Bsec2 /*bsec*/) {
   slotCallbackCommon(S_ENV, data, outputs);
+}
+
+// -------------------------
+// SuperMorgIO poster (from Garret's morgio firmware)
+// -------------------------
+static const char kPoster[] =
+"====================================================================\n"
+"  SuperMorgIO\n"
+"  Mycosoft ESP32AB\n"
+"====================================================================\n"
+"   ###############################\n"
+"   #                             #\n"
+"   #      _   _  ____  ____      #\n"
+"   #     | \\ | ||  _ \\|  _ \\     #\n"
+"   #     |  \\| || |_) | |_) |    #\n"
+"   #     | |\\  ||  __/|  __/     #\n"
+"   #     |_| \\_||_|   |_|        #\n"
+"   #                             #\n"
+"   #   (blocky Morgan render)    #\n"
+"   #      [=]   [=]              #\n"
+"   #        \\___/                #\n"
+"   #      __/|||\\__              #\n"
+"   #     /__|||||__\\             #\n"
+"   #                             #\n"
+"   ###############################\n"
+"--------------------------------------------------------------------\n"
+"  Commands: help | poster | morgio | coin | bump | power | 1up\n"
+"  LED: led mode off|state|manual  | led rgb <r> <g> <b>\n"
+"--------------------------------------------------------------------\n";
+
+static void printPoster() {
+  Serial.println();
+  Serial.print(kPoster);
+  Serial.println();
+}
+
+// -------------------------
+// I2C helpers (from Garret's morgio firmware)
+// -------------------------
+static bool i2cReadBytes(uint8_t addr, uint8_t reg, uint8_t* out, size_t n) {
+  Wire.beginTransmission(addr);
+  Wire.write(reg);
+  if (Wire.endTransmission(false) != 0) return false;
+  size_t got = Wire.requestFrom((int)addr, (int)n);
+  if (got != n) return false;
+  for (size_t i = 0; i < n; i++) out[i] = Wire.read();
+  return true;
+}
+
+static bool i2cRead8(uint8_t addr, uint8_t reg, uint8_t& val) {
+  return i2cReadBytes(addr, reg, &val, 1);
+}
+
+static void printBmeIdentity(uint8_t addr, int repeats = 3) {
+  Serial.printf("--- BME ID probe @ 0x%02X ---\n", addr);
+  for (int i = 0; i < repeats; i++) {
+    uint8_t chip = 0, var = 0;
+    bool ok1 = i2cRead8(addr, 0xD0, chip);
+    bool ok2 = i2cRead8(addr, 0xF0, var);
+    Serial.printf("  #%d chip_id: %s 0x%02X | variant_id: %s 0x%02X\n",
+                  i + 1,
+                  ok1 ? "OK" : "FAIL", chip,
+                  ok2 ? "OK" : "FAIL", var);
+    delay(25);
+  }
+  Serial.println("------------------------");
+}
+
+// -------------------------
+// I2C scan (from Garret's morgio firmware)
+// -------------------------
+static void printI2cScan() {
+  Serial.println("I2C scan:");
+  int found = 0;
+  for (uint8_t a = 1; a < 127; a++) {
+    Wire.beginTransmission(a);
+    uint8_t err = Wire.endTransmission();
+    if (err == 0) {
+      Serial.printf("  found: 0x%02X\n", a);
+      found++;
+    }
+  }
+  if (!found) Serial.println("  (none)");
+}
+
+// -------------------------
+// SuperMorgIO retro buzzer SFX (ledcWriteTone; blocking in CLI OK)
+// -------------------------
+static void playTone(int hz, int ms, int gapMs = 8) {
+  if (hz > 0) {
+    ledcWriteTone(0, hz);
+    delay(ms);
+    ledcWriteTone(0, 0);
+  } else {
+    delay(ms);
+  }
+  if (gapMs > 0) delay(gapMs);
+}
+
+static int noteHz(const char* n) {
+  if (!n) return 0;
+  if (strcmp(n, "REST") == 0) return 0;
+  if (strcmp(n, "C4") == 0) return 262;
+  if (strcmp(n, "D4") == 0) return 294;
+  if (strcmp(n, "E4") == 0) return 330;
+  if (strcmp(n, "F4") == 0) return 349;
+  if (strcmp(n, "G4") == 0) return 392;
+  if (strcmp(n, "A4") == 0) return 440;
+  if (strcmp(n, "B4") == 0) return 494;
+  if (strcmp(n, "C5") == 0) return 523;
+  if (strcmp(n, "D5") == 0) return 587;
+  if (strcmp(n, "E5") == 0) return 659;
+  if (strcmp(n, "F5") == 0) return 698;
+  if (strcmp(n, "G5") == 0) return 784;
+  if (strcmp(n, "A5") == 0) return 880;
+  if (strcmp(n, "B5") == 0) return 988;
+  if (strcmp(n, "C6") == 0) return 1047;
+  if (strcmp(n, "D6") == 0) return 1175;
+  if (strcmp(n, "E6") == 0) return 1319;
+  return 0;
+}
+
+static void playNote(const char* n, int ms, int gapMs = 8) {
+  playTone(noteHz(n), ms, gapMs);
+}
+
+static void sfxCoin() { playNote("E6", 35, 5); playNote("B5", 25, 0); }
+static void sfxBump() { playNote("C5", 40, 0); playNote("REST", 10, 0); playNote("C5", 25, 0); }
+static void sfxPowerUp() {
+  playNote("C5", 60); playNote("E5", 60); playNote("G5", 80);
+  playNote("C6", 120, 0);
+}
+static void sfx1Upish() {
+  playNote("E5", 60); playNote("G5", 60); playNote("A5", 60);
+  playNote("C6", 140, 0);
+}
+static void sfxSuperMorgIOBoot() {
+  const int q = 120;
+  const int e = q / 2;
+  const int s = q / 4;
+  playNote("C5", s); playNote("E5", s); playNote("G5", s); playNote("C6", e);
+  playNote("REST", s);
+  playNote("D5", s); playNote("F5", s); playNote("A5", s); playNote("D6", e);
+  playNote("REST", s);
+  playNote("E5", e); playNote("G5", e); playNote("B5", e);
+  playNote("A5", s); playNote("G5", s); playNote("E5", s); playNote("C5", s);
+  playNote("D5", e); playNote("G5", e); playNote("C5", q);
+}
+
+// -------------------------
+// Live output / LED state (Garret morgio)
+// -------------------------
+static void printOneSensorLine(const SensorSlot& s) {
+  if (!s.present || !s.r.valid) return;
+  uint32_t age = millis() - s.r.t_ms;
+  Serial.printf("#live %s addr=0x%02X age=%lums T=%.2fC RH=%.2f%% P=%.2fhPa Gas=%.0fOhm",
+                s.name, s.addr, (unsigned long)age,
+                s.r.tC, s.r.rh, s.r.p_hPa, s.r.gas_ohm);
+  if (!isnan(s.r.iaq)) Serial.printf(" IAQ=%.2f CO2eq=%.2f VOC=%.2f", s.r.iaq, s.r.co2eq, s.r.voc);
+  Serial.println();
+}
+
+static void printOneSensorNdjson(const SensorSlot& s) {
+  if (!s.present || !s.r.valid) return;
+  Serial.print("{\"ts_ms\":"); Serial.print(millis());
+  Serial.print(",\"sensor\":\""); Serial.print(s.name); Serial.print("\"");
+  Serial.print(",\"tC\":"); Serial.print(s.r.tC, 2);
+  Serial.print(",\"rh\":"); Serial.print(s.r.rh, 2);
+  Serial.print(",\"p_hPa\":"); Serial.print(s.r.p_hPa, 2);
+  Serial.print(",\"gas\":"); Serial.print(s.r.gas_ohm, 0);
+  if (!isnan(s.r.iaq)) Serial.print(",\"iaq\":"), Serial.print(s.r.iaq, 2), Serial.print(",\"co2eq\":"), Serial.print(s.r.co2eq, 2), Serial.print(",\"voc\":"), Serial.print(s.r.voc, 2);
+  Serial.println("}");
+}
+
+static void liveOutput() {
+  if (g_fmt == FMT_LINES) {
+    Serial.println("#live =====");
+    if (S_AMB.present) printOneSensorLine(S_AMB);
+    if (S_ENV.present) printOneSensorLine(S_ENV);
+  } else {
+    if (S_AMB.present) printOneSensorNdjson(S_AMB);
+    if (S_ENV.present) printOneSensorNdjson(S_ENV);
+  }
+}
+
+static void ledStateUpdate() {
+  if (g_led_mode == LEDMODE_OFF) {
+    pixels.clear();
+    pixels.show();
+    return;
+  }
+  if (g_led_mode == LEDMODE_MANUAL) {
+    pixels.setPixelColor(0, pixels.Color(g_led_r, g_led_g, g_led_b));
+    pixels.show();
+    return;
+  }
+  const bool ambPresent = S_AMB.present;
+  const bool envPresent = S_ENV.present;
+  const bool anyPresent = ambPresent || envPresent;
+  const bool anyBeginFail = (ambPresent && !S_AMB.beginOk) || (envPresent && !S_ENV.beginOk);
+  const bool anySubFail = (ambPresent && S_AMB.beginOk && !S_AMB.subOk) || (envPresent && S_ENV.beginOk && !S_ENV.subOk);
+  const bool initPhase = anyPresent && ((ambPresent && !S_AMB.r.valid) || (envPresent && !S_ENV.r.valid));
+
+  if (!anyPresent) {
+    uint8_t v = (uint8_t)(20 + (millis() / 6) % 80);
+    pixels.setPixelColor(0, pixels.Color(v, 0, 0));
+    pixels.show();
+    return;
+  }
+  if (anyBeginFail) {
+    bool on = ((millis() / 250) % 2) == 0;
+    pixels.setPixelColor(0, pixels.Color(on ? 120 : 0, 0, 0));
+    pixels.show();
+    return;
+  }
+  if (initPhase) {
+    uint8_t v = (uint8_t)(30 + (millis() / 8) % 90);
+    pixels.setPixelColor(0, pixels.Color(0, 0, v));
+    pixels.show();
+    return;
+  }
+  if (anySubFail) {
+    pixels.setPixelColor(0, pixels.Color(80, 60, 0));
+    pixels.show();
+    return;
+  }
+  pixels.setPixelColor(0, pixels.Color(0, 90, 0));
+  pixels.show();
+}
+
+// -------------------------
+// Serial CLI (ASCII line input; MDP uses 0x00-delimited binary)
+// -------------------------
+static void printCliHelp() {
+  Serial.println();
+  Serial.println("Commands (Serial Monitor @ 115200):");
+  Serial.println("  help         - this help");
+  Serial.println("  scan         - I2C bus scan");
+  Serial.println("  status       - I2C config + BME presence");
+  Serial.println("  i2c <sda> <scl> [hz] - set I2C pins + optional clock, re-init");
+  Serial.println("  poster       - SuperMorgIO ASCII art");
+  Serial.println("  morgio|coin|bump|power|1up - retro SFX");
+  Serial.println("  probe amb|env [n] - BME ID probe (default n=3)");
+  Serial.println("  regs amb|env - BME regs 0xD0 0xF0");
+  Serial.println("  led rgb <r> <g> <b> - set NeoPixel (0-255)");
+  Serial.println("  led mode off|state|manual");
+  Serial.println("  live on|off [period_ms]");
+  Serial.println("  dbg on|off   - throttled debug print");
+  Serial.println("  fmt lines|json");
+  Serial.println();
+}
+
+static void printStatus() {
+  Serial.printf("I2C: SDA=%d SCL=%d @ %lu Hz\n", I2C_SDA, I2C_SCL, (unsigned long)I2C_FREQ);
+  Serial.printf("AMB: present=%s addr=0x77 begin=%s sub=%s\n",
+                S_AMB.present ? "YES" : "NO",
+                S_AMB.beginOk ? "OK" : "FAIL",
+                S_AMB.subOk ? "OK" : "FAIL");
+  Serial.printf("ENV: present=%s addr=0x76 begin=%s sub=%s\n",
+                S_ENV.present ? "YES" : "NO",
+                S_ENV.beginOk ? "OK" : "FAIL",
+                S_ENV.subOk ? "OK" : "FAIL");
+}
+
+// Runtime I2C config (overrides config.h when set via CLI)
+static int gSda = I2C_SDA;
+static int gScl = I2C_SCL;
+static uint32_t gI2cHz = I2C_FREQ;
+
+static void handleCliCommand(const char* line) {
+  // Parse first token
+  int pos = 0;
+  while (line[pos] && (line[pos] == ' ' || line[pos] == '\t')) pos++;
+  int start = pos;
+  while (line[pos] && line[pos] != ' ' && line[pos] != '\t') pos++;
+  if (start >= pos) return;
+
+  char cmd[32];
+  int cmdLen = pos - start;
+  if (cmdLen >= (int)sizeof(cmd)) cmdLen = (int)sizeof(cmd) - 1;
+  memcpy(cmd, line + start, cmdLen);
+  cmd[cmdLen] = '\0';
+  for (int i = 0; cmd[i]; i++) if (cmd[i] >= 'A' && cmd[i] <= 'Z') cmd[i] += 32;
+
+  if (strcmp(cmd, "help") == 0 || strcmp(cmd, "?") == 0) {
+    printCliHelp();
+    return;
+  }
+  if (strcmp(cmd, "scan") == 0) {
+    printI2cScan();
+    return;
+  }
+  if (strcmp(cmd, "status") == 0) {
+    printStatus();
+    return;
+  }
+  if (strcmp(cmd, "i2c") == 0) {
+    int sda = atoi(line + pos); while (line[pos] && line[pos] != ' ' && line[pos] != '\t') pos++; while (line[pos] == ' ' || line[pos] == '\t') pos++;
+    int scl = atoi(line + pos); while (line[pos] && line[pos] != ' ' && line[pos] != '\t') pos++; while (line[pos] == ' ' || line[pos] == '\t') pos++;
+    long hz = atol(line + pos);
+    if (sda >= 0 && sda <= 255) gSda = sda;
+    if (scl >= 0 && scl <= 255) gScl = scl;
+    if (hz > 0 && hz <= 1000000) gI2cHz = (uint32_t)hz;
+    Serial.printf("I2C: SDA=%d SCL=%d @ %lu Hz - re-init\n", gSda, gScl, (unsigned long)gI2cHz);
+    Wire.end();
+    Wire.begin((int)gSda, (int)gScl);
+    Wire.setClock(gI2cHz);
+    slotInit(S_AMB);
+    slotInit(S_ENV);
+    bme688_count = (S_AMB.present ? 1 : 0) + (S_ENV.present ? 1 : 0);
+    printI2cScan();
+    return;
+  }
+  if (strcmp(cmd, "poster") == 0) {
+    printPoster();
+    return;
+  }
+  if (strcmp(cmd, "morgio") == 0) {
+    sfxSuperMorgIOBoot();
+    return;
+  }
+  if (strcmp(cmd, "coin") == 0) { sfxCoin(); return; }
+  if (strcmp(cmd, "bump") == 0) { sfxBump(); return; }
+  if (strcmp(cmd, "power") == 0) { sfxPowerUp(); return; }
+  if (strcmp(cmd, "1up") == 0) { sfx1Upish(); return; }
+  if (strcmp(cmd, "probe") == 0) {
+    while (line[pos] == ' ' || line[pos] == '\t') pos++;
+    int a2 = pos;
+    while (line[pos] && line[pos] != ' ' && line[pos] != '\t') pos++;
+    char target[8];
+    int tl = pos - a2;
+    if (tl >= (int)sizeof(target)) tl = (int)sizeof(target) - 1;
+    memcpy(target, line + a2, tl);
+    target[tl] = '\0';
+    int n = 3;
+    while (line[pos] == ' ' || line[pos] == '\t') pos++;
+    if (line[pos]) n = atoi(line + pos);
+    if (n <= 0) n = 3;
+    if (strcmp(target, "amb") == 0) printBmeIdentity(0x77, n);
+    else if (strcmp(target, "env") == 0) printBmeIdentity(0x76, n);
+    else Serial.println("probe amb|env [n]");
+    return;
+  }
+  if (strcmp(cmd, "regs") == 0) {
+    while (line[pos] == ' ' || line[pos] == '\t') pos++;
+    if (strncmp(line + pos, "amb", 3) == 0) {
+      uint8_t b[2];
+      if (i2cReadBytes(0x77, 0xD0, b, 2)) Serial.printf("AMB 0xD0=0x%02X 0xF0=0x%02X\n", b[0], b[1]);
+    } else if (strncmp(line + pos, "env", 3) == 0) {
+      uint8_t b[2];
+      if (i2cReadBytes(0x76, 0xD0, b, 2)) Serial.printf("ENV 0xD0=0x%02X 0xF0=0x%02X\n", b[0], b[1]);
+    } else Serial.println("regs amb|env");
+    return;
+  }
+  if (strcmp(cmd, "led") == 0) {
+    while (line[pos] == ' ' || line[pos] == '\t') pos++;
+    int m2 = pos;
+    while (line[pos] && line[pos] != ' ' && line[pos] != '\t') pos++;
+    char sub[16];
+    int sl = pos - m2;
+    if (sl >= (int)sizeof(sub)) sl = (int)sizeof(sub) - 1;
+    memcpy(sub, line + m2, sl);
+    sub[sl] = '\0';
+    if (strcmp(sub, "rgb") == 0) {
+      int r = atoi(line + pos); while (line[pos] && line[pos] != ' ') pos++; while (line[pos] == ' ') pos++;
+      int g = atoi(line + pos); while (line[pos] && line[pos] != ' ') pos++; while (line[pos] == ' ') pos++;
+      int b = atoi(line + pos);
+      g_led_r = (r < 0) ? 0 : (r > 255 ? 255 : r);
+      g_led_g = (g < 0) ? 0 : (g > 255 ? 255 : g);
+      g_led_b = (b < 0) ? 0 : (b > 255 ? 255 : b);
+      g_led_mode = LEDMODE_MANUAL;
+      pixels.setPixelColor(0, pixels.Color(g_led_r, g_led_g, g_led_b));
+      pixels.show();
+    } else if (strcmp(sub, "mode") == 0) {
+      while (line[pos] == ' ' || line[pos] == '\t') pos++;
+      if (strncmp(line + pos, "off", 3) == 0) {
+        g_led_mode = LEDMODE_OFF;
+        pixels.clear();
+        pixels.show();
+      } else if (strncmp(line + pos, "state", 5) == 0) {
+        g_led_mode = LEDMODE_STATE;
+      } else if (strncmp(line + pos, "manual", 6) == 0) {
+        g_led_mode = LEDMODE_MANUAL;
+      }
+    }
+    return;
+  }
+  if (strcmp(cmd, "live") == 0) {
+    while (line[pos] == ' ' || line[pos] == '\t') pos++;
+    if (strncmp(line + pos, "on", 2) == 0) {
+      g_live_on = true;
+      while (line[pos] && line[pos] != ' ') pos++;
+      while (line[pos] == ' ') pos++;
+      if (line[pos]) { int p = atoi(line + pos); if (p > 0) g_live_period_ms = (uint32_t)p; }
+      Serial.printf("live ON %lu ms\n", (unsigned long)g_live_period_ms);
+    } else if (strncmp(line + pos, "off", 3) == 0) {
+      g_live_on = false;
+      Serial.println("live OFF");
+    }
+    return;
+  }
+  if (strcmp(cmd, "dbg") == 0) {
+    while (line[pos] == ' ' || line[pos] == '\t') pos++;
+    g_dbg = (strncmp(line + pos, "on", 2) == 0);
+    Serial.printf("dbg %s\n", g_dbg ? "ON" : "OFF");
+    return;
+  }
+  if (strcmp(cmd, "fmt") == 0) {
+    while (line[pos] == ' ' || line[pos] == '\t') pos++;
+    if (strncmp(line + pos, "json", 4) == 0) g_fmt = FMT_NDJSON;
+    else g_fmt = FMT_LINES;
+    Serial.printf("fmt %s\n", g_fmt == FMT_NDJSON ? "json" : "lines");
+    return;
+  }
+  Serial.println("Unknown command. Type 'help' for list.");
+}
+
+static bool isPrintableAscii(const uint8_t* buf, size_t len) {
+  for (size_t i = 0; i < len; i++) {
+    uint8_t b = buf[i];
+    if (b != '\t' && (b < 0x20 || b > 0x7E)) return false;
+  }
+  return true;
 }
 
 static bool slotInit(SensorSlot& s) {
@@ -442,6 +887,7 @@ void setup() {
   pixels.clear();
   pixels.show();
 
+  initBuzzer();
   initSensors();
   send_hello();
 }
@@ -460,6 +906,12 @@ void loop() {
         }
       }
       cobs_len = 0;
+    } else if (b == '\n' || b == '\r') {
+      if (cobs_len > 0 && isPrintableAscii(cobs_buffer, cobs_len)) {
+        cobs_buffer[cobs_len] = '\0';
+        handleCliCommand((const char*)cobs_buffer);
+      }
+      cobs_len = 0;
     } else if (cobs_len < sizeof(cobs_buffer)) {
       cobs_buffer[cobs_len++] = b;
     } else {
@@ -470,6 +922,15 @@ void loop() {
   // Run BSEC2
   if (S_AMB.present && S_AMB.beginOk) (void)S_AMB.bsec.run();
   if (S_ENV.present && S_ENV.beginOk) (void)S_ENV.bsec.run();
+
+  if (g_live_on) {
+    uint32_t now = millis();
+    if (now - g_last_live_ms >= g_live_period_ms) {
+      g_last_live_ms = now;
+      liveOutput();
+    }
+  }
+  if (g_led_mode == LEDMODE_STATE) ledStateUpdate();
 
   if (millis() - last_stream_ms >= stream_interval_ms) {
     send_telemetry();
