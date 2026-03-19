@@ -1,0 +1,40 @@
+[Unit]
+Description=MycoBrain OpenClaw AI Agent Gateway
+Documentation=https://github.com/openclaw/openclaw
+After=network-online.target mycobrain-ondevice-operator.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mycosoft
+Group=dialout
+WorkingDirectory=/home/mycosoft/.openclaw
+
+# Environment
+EnvironmentFile=-/etc/mycosoft/openclaw.env
+
+# Serial port for MycoBrain Side B
+Environment=MYCOBRAIN_SERIAL_PORT=/dev/ttyTHS1
+Environment=MYCOBRAIN_SERIAL_BAUD=115200
+
+# OpenClaw gateway
+ExecStart=/usr/bin/env openclaw daemon --config /home/mycosoft/.openclaw/openclaw.json
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mycobrain-openclaw
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/mycosoft/.openclaw
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

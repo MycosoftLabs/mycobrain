@@ -15,7 +15,14 @@ static const int SIDEA_RX = 18;
 static const int SIDEA_TX = 19;
 static const int STATUS_LED = 2;
 
-static const char* FW_VERSION = "side-b-mdp-2.0.0";
+static const char* FW_VERSION = "side-b-mdp-2.1.0";
+
+// OpenClaw JSON bridge: accepts newline-delimited JSON on JetsonUart
+// alongside existing MDP binary frames. JSON lines are translated to
+// MDP COMMAND frames and forwarded to Side A. Responses from Side A
+// are echoed back as JSON on the Jetson UART.
+static char json_line_buf[512];
+static size_t json_line_len = 0;
 
 #define HEARTBEAT_INTERVAL_MS 5000
 #define MAX_QUEUE_DEPTH 32
@@ -147,6 +154,78 @@ void handle_transport_command(const MdpHeader& hdr, DynamicJsonDocument& payload
   send_ack_to_jetson(hdr.seq, false, "unknown_transport_command");
 }
 
+// ---- OpenClaw JSON->MDP Bridge ----
+// Accepts: {"tool":"mycobrain","action":"<cmd>","params":{...}}\n
+// Also accepts: {"cmd":"<cmd>","params":{...}}\n (direct MDP format)
+// Translates to MDP COMMAND frame -> Side A, returns MDP responses as JSON.
+void handle_openclaw_json(const char* line, size_t len) {
+  DynamicJsonDocument jdoc(512);
+  auto err = deserializeJson(jdoc, line, len);
+  if (err) {
+    JetsonUart.println("{\"error\":\"json_parse_error\"}");
+    return;
+  }
+
+  // Extract command from OpenClaw tool-call format or direct MDP format
+  const char* action = jdoc["action"] | (const char*)nullptr;
+  const char* cmd_direct = jdoc["cmd"] | (const char*)nullptr;
+  const char* cmd = action ? action : cmd_direct;
+  if (!cmd) {
+    JetsonUart.println("{\"error\":\"missing_action_or_cmd\"}");
+    return;
+  }
+
+  // Build MDP command payload
+  StaticJsonDocument<384> mdpPayload;
+  mdpPayload["cmd"] = cmd;
+  if (jdoc.containsKey("params")) {
+    mdpPayload["params"] = jdoc["params"];
+  } else {
+    mdpPayload.createNestedObject("params");
+  }
+
+  // Check if this is a Side B transport command
+  if (strcmp(cmd, "transport_status") == 0 || strcmp(cmd, "lora_send") == 0 ||
+      strcmp(cmd, "ble_advertise") == 0 || strcmp(cmd, "wifi_connect") == 0 ||
+      strcmp(cmd, "sim_send") == 0) {
+    // Handle locally on Side B
+    MdpHeader fakeHdr{};
+    fakeHdr.magic = MDP_MAGIC;
+    fakeHdr.version = MDP_VERSION;
+    fakeHdr.msg_type = MDP_COMMAND;
+    fakeHdr.seq = tx_seq++;
+    fakeHdr.flags = ACK_REQUESTED;
+    fakeHdr.src = EP_GATEWAY;
+    fakeHdr.dst = EP_SIDE_B;
+    DynamicJsonDocument dp(384);
+    dp["cmd"] = cmd;
+    if (jdoc.containsKey("params")) dp["params"] = jdoc["params"];
+    handle_transport_command(fakeHdr, dp);
+    return;
+  }
+
+  // Forward to Side A as MDP COMMAND frame
+  send_frame_to(SideAUart, MDP_COMMAND, EP_GATEWAY, EP_SIDE_A, 0, ACK_REQUESTED, mdpPayload);
+
+  // Respond with forwarded confirmation (actual response comes async from Side A)
+  StaticJsonDocument<128> resp;
+  resp["status"] = "forwarded";
+  resp["cmd"] = cmd;
+  serializeJson(resp, JetsonUart);
+  JetsonUart.println();
+}
+
+static bool isJsonLine(const uint8_t* buf, size_t len) {
+  // Quick check: does it start with '{' and end with '}'?
+  if (len < 2) return false;
+  size_t start = 0;
+  while (start < len && (buf[start] == ' ' || buf[start] == '\t')) start++;
+  if (start >= len || buf[start] != '{') return false;
+  size_t end = len - 1;
+  while (end > start && (buf[end] == ' ' || buf[end] == '\t' || buf[end] == '\r')) end--;
+  return buf[end] == '}';
+}
+
 void setup() {
   Serial.begin(115200);
   JetsonUart.begin(115200, SERIAL_8N1, JETSON_RX, JETSON_TX);
@@ -165,10 +244,11 @@ void setup() {
 }
 
 void loop() {
-  // Jetson -> SideB frames
+  // Jetson -> SideB frames (MDP binary via 0x00 delimiter + OpenClaw JSON via newline)
   while (JetsonUart.available() > 0) {
     uint8_t b = (uint8_t)JetsonUart.read();
     if (b == 0x00) {
+      // MDP binary frame delimiter
       if (cobs_from_jetson_len > 0) {
         MdpHeader hdr{};
         DynamicJsonDocument payload(512);
@@ -185,6 +265,16 @@ void loop() {
           }
         }
       }
+      cobs_from_jetson_len = 0;
+    } else if (b == '\n') {
+      // Newline: check if accumulated bytes are a JSON line (OpenClaw bridge)
+      if (cobs_from_jetson_len > 0 && isJsonLine(cobs_from_jetson, cobs_from_jetson_len)) {
+        // OpenClaw JSON command
+        cobs_from_jetson[cobs_from_jetson_len] = '\0';
+        handle_openclaw_json((const char*)cobs_from_jetson, cobs_from_jetson_len);
+        last_heartbeat_ms = millis();
+      }
+      // If not JSON, discard (could be debug text)
       cobs_from_jetson_len = 0;
     } else if (cobs_from_jetson_len < sizeof(cobs_from_jetson)) {
       cobs_from_jetson[cobs_from_jetson_len++] = b;

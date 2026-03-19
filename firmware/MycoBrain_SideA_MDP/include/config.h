@@ -27,3 +27,11 @@ static const uint8_t BME_ADDRS[2] = {0x76, 0x77};
 // Hyphae 1: soil moisture ADC (capacitive sensor on GPIO 8)
 static const int SOIL_MOISTURE_ADC_PIN = 8;
 #endif
+
+// Nemo Claw (MicoLatch servo gripper) configuration
+// Mode 1: Direct GPIO servo via LEDC PWM (use CLAW_SERVO_PIN)
+// Mode 2: I2C PCA9685 PWM driver at 0x40 (auto-detected via I2C scan)
+static const int CLAW_SERVO_PIN = 13;       // MOSFET3 pin doubles as servo output
+static const int CLAW_FORCE_ADC_PIN = 11;   // AI4 for optional force feedback
+static const uint8_t CLAW_PCA9685_ADDR = 0x40;
+static const uint8_t CLAW_PCA9685_CHANNEL = 0;

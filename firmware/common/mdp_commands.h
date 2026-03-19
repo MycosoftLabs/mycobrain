@@ -35,6 +35,13 @@ extern "C" {
 #define CMD_DRONE_DATA_MULE_START  0x002A
 #define CMD_DRONE_DATA_MULE_SYNC   0x002B
 
+// Nemo Claw (MicoLatch gripper) commands
+#define CMD_CLAW_GRIP       0x0030
+#define CMD_CLAW_RELEASE    0x0031
+#define CMD_CLAW_POSITION   0x0032
+#define CMD_CLAW_STATUS     0x0033
+#define CMD_CLAW_CALIBRATE  0x0034
+
 #ifdef __cplusplus
 }
 #endif

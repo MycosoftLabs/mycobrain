@@ -1,0 +1,109 @@
+{
+  "name": "mycobrain-control",
+  "version": "1.0.0",
+  "description": "MycoBrain IoT sensor platform control via MDP protocol. Provides tools for sensor reading, Nemo claw gripper control, output management, and drone mission commands.",
+  "author": "Mycosoft Labs",
+  "tools": [
+    {
+      "name": "sensor_read",
+      "description": "Read BME688 environmental sensor data (temperature, humidity, pressure, IAQ, CO2, VOC) from both ambient and environment slots.",
+      "parameters": {}
+    },
+    {
+      "name": "sensor_stream",
+      "description": "Set the telemetry streaming rate.",
+      "parameters": {
+        "rate_hz": {
+          "type": "number",
+          "description": "Streaming rate in Hz (0.1 to 10)",
+          "default": 1
+        }
+      }
+    },
+    {
+      "name": "claw_grip",
+      "description": "Close the Nemo claw gripper (MicoLatch payload latch).",
+      "parameters": {}
+    },
+    {
+      "name": "claw_release",
+      "description": "Open the Nemo claw gripper (release payload).",
+      "parameters": {}
+    },
+    {
+      "name": "claw_position",
+      "description": "Set the Nemo claw servo to a specific angle.",
+      "parameters": {
+        "angle": {
+          "type": "integer",
+          "description": "Servo angle in degrees (0-180)",
+          "minimum": 0,
+          "maximum": 180
+        }
+      }
+    },
+    {
+      "name": "claw_status",
+      "description": "Get current Nemo claw position, closed state, force feedback, and mode.",
+      "parameters": {}
+    },
+    {
+      "name": "output_control",
+      "description": "Control MOSFET digital outputs (3 channels).",
+      "parameters": {
+        "id": {
+          "type": "string",
+          "description": "Output ID: mosfet1, mosfet2, mosfet3, buzzer, or neopixel"
+        },
+        "value": {
+          "type": "integer",
+          "description": "0=off, 1=on"
+        }
+      }
+    },
+    {
+      "name": "led_set",
+      "description": "Set NeoPixel LED color.",
+      "parameters": {
+        "r": { "type": "integer", "description": "Red (0-255)" },
+        "g": { "type": "integer", "description": "Green (0-255)" },
+        "b": { "type": "integer", "description": "Blue (0-255)" }
+      }
+    },
+    {
+      "name": "buzzer",
+      "description": "Play a tone on the buzzer.",
+      "parameters": {
+        "freq": { "type": "integer", "description": "Frequency in Hz", "default": 1200 },
+        "duration_ms": { "type": "integer", "description": "Duration in milliseconds", "default": 200 }
+      }
+    },
+    {
+      "name": "device_status",
+      "description": "Get full device health status including sensor presence, uptime, and capabilities.",
+      "parameters": {}
+    },
+    {
+      "name": "lora_send",
+      "description": "Send a LoRa message via SX1262 radio.",
+      "parameters": {
+        "payload": { "type": "string", "description": "Message payload to send" },
+        "qos": { "type": "integer", "description": "Quality of service (0=best-effort, 1=reliable)", "default": 0 }
+      }
+    },
+    {
+      "name": "drone_mission",
+      "description": "Start a MycoDRONE mission (deploy, retrieve, or data mule).",
+      "parameters": {
+        "type": {
+          "type": "string",
+          "description": "Mission type: deploy, retrieve, data_mule, rtl, land"
+        },
+        "target_device_id": {
+          "type": "string",
+          "description": "Target device ID for retrieve/data_mule missions"
+        }
+      }
+    }
+  ]
+}
