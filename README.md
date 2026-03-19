@@ -68,6 +68,10 @@ See **[firmware/README.md](firmware/README.md)** for:
 - Jetson integration (Mushroom 1, Hyphae 1, Gateway)
 - MDP and NLM interactions
 
+### Jetson Integration
+
+MycoBrain firmware connects to **NVIDIA Jetson** boards for on-device AI and gateway routing. Deploy scripts and edge Python live in the **MAS repo** (`deploy/jetson/`). See [docs/FIRMWARE_AND_JETSON_INDEX_MAR07_2026.md](docs/FIRMWARE_AND_JETSON_INDEX_MAR07_2026.md) for all Jetson and firmware docs.
+
 ## 🔌 WebSocket Protocol
 
 MycoBrain devices connect to the website via WebSocket:
@@ -134,8 +138,10 @@ MycoBrain devices are managed via:
 ## 📚 Documentation
 
 - [Firmware README](firmware/README.md) — v2.0.0 layout, flash procedure, Jetson integration
+- [Firmware and Jetson Index](docs/FIRMWARE_AND_JETSON_INDEX_MAR07_2026.md) — all firmware + Jetson docs
 - [MDP Protocol Contracts](docs/MDP_PROTOCOL_CONTRACTS_MAR07_2026.md) — MDP rail and gateway upstream
 - [Jetson Production Deploy](docs/JETSON_MYCOBRAIN_PRODUCTION_DEPLOY_MAR13_2026.md) — BOM, wiring, Jetson setup
+- [Jetson Firmware Implementation Guide](docs/JETSON_FIRMWARE_IMPLEMENTATION_GUIDE_MAR07_2026.md) — build/flash for Side A/B, Jetson setup
 - [Firmware Architecture](docs/FIRMWARE_ARCHITECTURE_FEB10_2026.md)
 
 ## 🔨 Building and Flashing Firmware

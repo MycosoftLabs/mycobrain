@@ -69,7 +69,7 @@ Use the flash script from the **mycobrain repo root**:
 - **Side B** bridges Side A ↔ Jetson over UART; Jetson runs `ondevice_operator` or `gateway_router`.
 - **Jetson** parses MDP, forwards telemetry to MAS/MINDEX/NLM; see [Jetson Production Deploy](../docs/JETSON_MYCOBRAIN_PRODUCTION_DEPLOY_MAR13_2026.md).
 
-Deploy scripts and edge Python code live in the **MAS repo** (`deploy/jetson-ondevice/`, `deploy/jetson-gateway/`, `edge/`).
+Deploy scripts and edge Python code live in the **MAS repo** (`deploy/jetson/`, `edge/`). See [deploy/jetson/README.md](../deploy/jetson/README.md) for reference.
 
 ---
 
