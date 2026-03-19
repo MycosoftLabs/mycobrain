@@ -1,7 +1,7 @@
 # MycoBrain - Environmental IoT Sensor Platform
 
 > **Version**: 2.0.0  
-> **Last Updated**: 2026-01-15T14:30:00Z
+> **Last Updated**: 2026-03-07
 
 ## Overview
 
@@ -161,6 +161,12 @@ MycoBrain devices are managed via:
 See [firmware/README.md](firmware/README.md) for full procedure.
 
 ## 📝 Changelog
+
+### 2026-03-07
+- Added Jetson integration docs (Side A ↔ Jetson ↔ Side B)
+- New docs: Jetson gateway, Cortex/LilyGo architectures, firmware implementation guide
+- Updated firmware README with Jetson deploy reference (MAS repo)
+- [docs/FIRMWARE_AND_JETSON_INDEX_MAR07_2026.md](docs/FIRMWARE_AND_JETSON_INDEX_MAR07_2026.md) — index of all firmware + Jetson docs
 
 ### 2026-01-15
 - Integrated with CREP dashboard
