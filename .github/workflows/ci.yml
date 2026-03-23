@@ -16,8 +16,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup PlatformIO
-        uses: platformio/setup-platformio@v2
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PlatformIO
+        run: pip install -U platformio
 
       - name: Build
         working-directory: firmware/${{ matrix.target }}
