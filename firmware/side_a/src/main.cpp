@@ -304,6 +304,10 @@ static void setDeviceDisplayName(const char* name) {
 
 static inline float adcCountsToVolts(uint16_t c) { return (float)c * (cfg::ADC_VREF / (float)cfg::ADC_MAX); }
 
+static uint16_t ai_counts[4] = {0};
+static float ai_volts[4] = {0};
+static bool mos_state[3] = {false,false,false};
+
 // ==============================
 //  Envelope + durable replay
 // ==============================
@@ -463,6 +467,9 @@ static void durableAck(uint32_t ackSeq) {
   durableSaveMeta();
 }
 
+static void txEnqueue(const uint8_t* payload, uint16_t len, uint32_t seq, bool ackReq);
+static void uartSendCOBS(const uint8_t* payload, uint16_t len);
+
 static void durableReplayInit() {
   if (!durableReady) return;
   // Re-enqueue any durable messages that weren't acked before reboot.
@@ -565,9 +572,6 @@ static void scanAllI2C() {
 // ==============================
 //     Analog + MOSFET
 // ==============================
-static uint16_t ai_counts[4] = {0};
-static float ai_volts[4] = {0};
-static bool mos_state[3] = {false,false,false};
 
 static uint16_t readAdcClamped(int pin) {
   int v = analogRead(pin);
