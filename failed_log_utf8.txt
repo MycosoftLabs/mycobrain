@@ -1,0 +1,401 @@
+﻿build (side_a)	UNKNOWN STEP	∩╗┐2026-03-23T02:25:23.8196963Z Current runner version: '2.332.0'
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8222686Z ##[group]Runner Image Provisioner
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8223791Z Hosted Compute Agent
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8224359Z Version: 20260213.493
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8225022Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8225726Z Build Date: 2026-02-13T00:28:41Z
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8226430Z Worker ID: {23cd62a9-5f53-4b90-b3be-7f3987a0f4b8}
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8227153Z Azure Region: centralus
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8227714Z ##[endgroup]
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8229139Z ##[group]Operating System
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8229832Z Ubuntu
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8230280Z 24.04.3
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8230876Z LTS
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8231360Z ##[endgroup]
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8231897Z ##[group]Runner Image
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8232745Z Image: ubuntu-24.04
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8233303Z Version: 20260309.50.1
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8234473Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260309.50/images/ubuntu/Ubuntu2404-Readme.md
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8236017Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260309.50
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8236886Z ##[endgroup]
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8239432Z ##[group]GITHUB_TOKEN Permissions
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8241954Z Actions: write
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8242753Z ArtifactMetadata: write
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8243600Z Attestations: write
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8244128Z Checks: write
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8244661Z Contents: write
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8245146Z Deployments: write
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8245752Z Discussions: write
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8246270Z Issues: write
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8246754Z Metadata: read
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8247283Z Models: read
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8247785Z Packages: write
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8248254Z Pages: write
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8248911Z PullRequests: write
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8249501Z RepositoryProjects: write
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8250049Z SecurityEvents: write
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8250672Z Statuses: write
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8251163Z ##[endgroup]
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8253732Z Secret source: Actions
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8254731Z Prepare workflow directory
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8627991Z Prepare all required actions
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:23.8683557Z Getting action download info
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.2006956Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.3326919Z Download action repository 'actions/setup-python@v5' (SHA:a26af69be951a213d495a4c3e4e4022e16d87065)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.5179542Z Complete job name: build (side_a)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.5886956Z ##[group]Run actions/checkout@v4
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.5887770Z with:
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.5888191Z   repository: MycosoftLabs/mycobrain
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.5888863Z   token: ***
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.5889270Z   ssh-strict: true
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.5889657Z   ssh-user: git
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.5890065Z   persist-credentials: true
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.5890515Z   clean: true
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.5890930Z   sparse-checkout-cone-mode: true
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.5891416Z   fetch-depth: 1
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.5891818Z   fetch-tags: false
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.5892519Z   show-progress: true
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.5892976Z   lfs: false
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.5893345Z   submodules: false
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.5893740Z   set-safe-directory: true
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.5894474Z ##[endgroup]
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.6980890Z Syncing repository: MycosoftLabs/mycobrain
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.6983063Z ##[group]Getting Git version info
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.6983800Z Working directory is '/home/runner/work/mycobrain/mycobrain'
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.6984885Z [command]/usr/bin/git version
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7085863Z git version 2.53.0
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7111907Z ##[endgroup]
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7126949Z Temporarily overriding HOME='/home/runner/work/_temp/1820c211-6619-48b8-ad9c-02a191bc4fb4' before making global git config changes
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7128286Z Adding repository directory to the temporary git global config as a safe directory
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7139637Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/mycobrain/mycobrain
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7180084Z Deleting the contents of '/home/runner/work/mycobrain/mycobrain'
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7183960Z ##[group]Initializing the repository
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7187785Z [command]/usr/bin/git init /home/runner/work/mycobrain/mycobrain
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7309777Z hint: Using 'master' as the name for the initial branch. This default branch name
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7310977Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7312027Z hint: to use in all of your new repositories, which will suppress this warning,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7313080Z hint: call:
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7313444Z hint:
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7313933Z hint: 	git config --global init.defaultBranch <name>
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7314563Z hint:
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7315479Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7316727Z hint: 'development'. The just-created branch can be renamed via this command:
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7317441Z hint:
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7317819Z hint: 	git branch -m <name>
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7318288Z hint:
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7318913Z hint: Disable this message with "git config set advice.defaultBranchName false"
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7319871Z Initialized empty Git repository in /home/runner/work/mycobrain/mycobrain/.git/
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7327795Z [command]/usr/bin/git remote add origin https://github.com/MycosoftLabs/mycobrain
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7363853Z ##[endgroup]
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7364606Z ##[group]Disabling automatic garbage collection
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7368505Z [command]/usr/bin/git config --local gc.auto 0
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7398617Z ##[endgroup]
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7399824Z ##[group]Setting up auth
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7406496Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7438899Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7805089Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.7839015Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.8090909Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.8121619Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.8375485Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.8414781Z ##[endgroup]
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.8416081Z ##[group]Fetching the repository
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:24.8425030Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +481a8ff9af5acfb2f94e9992d0ab29b1b4803325:refs/remotes/origin/main
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.2484624Z From https://github.com/MycosoftLabs/mycobrain
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.2486257Z  * [new ref]         481a8ff9af5acfb2f94e9992d0ab29b1b4803325 -> origin/main
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.2523817Z ##[endgroup]
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.2525161Z ##[group]Determining the checkout info
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.2526966Z ##[endgroup]
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.2531198Z [command]/usr/bin/git sparse-checkout disable
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.2575236Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.2605264Z ##[group]Checking out the ref
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.2606932Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.2899447Z Switched to a new branch 'main'
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.2901681Z branch 'main' set up to track 'origin/main'.
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.2910687Z ##[endgroup]
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.2950347Z [command]/usr/bin/git log -1 --format=%H
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.2974128Z 481a8ff9af5acfb2f94e9992d0ab29b1b4803325
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.3288831Z ##[group]Run actions/setup-python@v5
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.3289955Z with:
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.3290756Z   python-version: 3.11
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.3291676Z   check-latest: false
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.3292989Z   token: ***
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.3293845Z   update-environment: true
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.3294842Z   allow-prereleases: false
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.3295807Z   freethreaded: false
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.3296704Z ##[endgroup]
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.5009816Z ##[group]Installed versions
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.5114627Z Successfully set up CPython (3.11.15)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.5117231Z ##[endgroup]
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.5256522Z ##[group]Run pip install -U platformio
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.5257686Z [36;1mpip install -U platformio[0m
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.5322718Z shell: /usr/bin/bash -e {0}
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.5323641Z env:
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.5324573Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.15/x64
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.5326144Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib/pkgconfig
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.5327678Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.5329052Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.5330462Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.5331860Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:25.5333232Z ##[endgroup]
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:26.4826021Z Collecting platformio
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:26.5633367Z   Downloading platformio-6.1.19-py3-none-any.whl.metadata (7.2 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:26.5978292Z Collecting bottle==0.13.* (from platformio)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:26.6106008Z   Downloading bottle-0.13.4-py2.py3-none-any.whl.metadata (1.6 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:26.6453046Z Collecting click<8.4,>=8.0.4 (from platformio)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:26.6569194Z   Downloading click-8.3.1-py3-none-any.whl.metadata (2.6 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:26.6872075Z Collecting colorama (from platformio)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:26.6988099Z   Downloading colorama-0.4.6-py2.py3-none-any.whl.metadata (17 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:26.7708622Z Collecting marshmallow==3.* (from platformio)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:26.7826860Z   Downloading marshmallow-3.26.2-py3-none-any.whl.metadata (7.3 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:26.8093726Z Collecting pyelftools<1,>=0.27 (from platformio)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:26.8202464Z   Downloading pyelftools-0.32-py3-none-any.whl.metadata (372 bytes)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:26.8448987Z Collecting pyserial==3.5.* (from platformio)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:26.8558990Z   Downloading pyserial-3.5-py2.py3-none-any.whl.metadata (1.6 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:26.9048186Z Collecting requests==2.* (from platformio)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:26.9168663Z   Downloading requests-2.32.5-py3-none-any.whl.metadata (4.9 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:26.9421262Z Collecting semantic_version==2.10.* (from platformio)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:26.9543105Z   Downloading semantic_version-2.10.0-py2.py3-none-any.whl.metadata (9.7 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:26.9819979Z Collecting tabulate==0.* (from platformio)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:26.9954242Z   Downloading tabulate-0.10.0-py3-none-any.whl.metadata (40 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.0257810Z Collecting ajsonrpc==1.2.* (from platformio)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.0373467Z   Downloading ajsonrpc-1.2.0-py3-none-any.whl.metadata (6.9 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.0755346Z Collecting starlette<0.53,>=0.19 (from platformio)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.0877788Z   Downloading starlette-0.52.1-py3-none-any.whl.metadata (6.3 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.1252767Z Collecting uvicorn<0.41,>=0.16 (from platformio)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.1375681Z   Downloading uvicorn-0.40.0-py3-none-any.whl.metadata (6.7 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.1636029Z Collecting wsproto==1.* (from platformio)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.1755883Z   Downloading wsproto-1.3.2-py3-none-any.whl.metadata (5.2 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.2046515Z Collecting packaging>=17.0 (from marshmallow==3.*->platformio)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.2166919Z   Downloading packaging-26.0-py3-none-any.whl.metadata (3.3 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.3299787Z Collecting charset_normalizer<4,>=2 (from requests==2.*->platformio)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.3416438Z   Downloading charset_normalizer-3.4.6-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (40 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.3699088Z Collecting idna<4,>=2.5 (from requests==2.*->platformio)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.3820544Z   Downloading idna-3.11-py3-none-any.whl.metadata (8.4 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.4159566Z Collecting urllib3<3,>=1.21.1 (from requests==2.*->platformio)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.4280559Z   Downloading urllib3-2.6.3-py3-none-any.whl.metadata (6.9 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.4593416Z Collecting certifi>=2017.4.17 (from requests==2.*->platformio)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.4718467Z   Downloading certifi-2026.2.25-py3-none-any.whl.metadata (2.5 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.5033348Z Collecting anyio<5,>=3.6.2 (from starlette<0.53,>=0.19->platformio)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.5146144Z   Downloading anyio-4.12.1-py3-none-any.whl.metadata (4.3 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.5437864Z Collecting typing-extensions>=4.10.0 (from starlette<0.53,>=0.19->platformio)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.5551813Z   Downloading typing_extensions-4.15.0-py3-none-any.whl.metadata (3.3 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.5832704Z Collecting h11>=0.8 (from uvicorn<0.41,>=0.16->platformio)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.5941271Z   Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.6119886Z Downloading platformio-6.1.19-py3-none-any.whl (421 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.6466512Z Downloading ajsonrpc-1.2.0-py3-none-any.whl (22 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.6612868Z Downloading bottle-0.13.4-py2.py3-none-any.whl (103 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.6766090Z Downloading click-8.3.1-py3-none-any.whl (108 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.6906047Z Downloading marshmallow-3.26.2-py3-none-any.whl (50 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.7102125Z Downloading pyelftools-0.32-py3-none-any.whl (188 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.7531746Z Downloading pyserial-3.5-py2.py3-none-any.whl (90 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.7709582Z Downloading requests-2.32.5-py3-none-any.whl (64 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.7850772Z Downloading charset_normalizer-3.4.6-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (204 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.8003858Z Downloading idna-3.11-py3-none-any.whl (71 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.8153132Z Downloading semantic_version-2.10.0-py2.py3-none-any.whl (15 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.8470157Z Downloading starlette-0.52.1-py3-none-any.whl (74 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.8679613Z Downloading anyio-4.12.1-py3-none-any.whl (113 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.8819191Z Downloading tabulate-0.10.0-py3-none-any.whl (39 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.8952702Z Downloading urllib3-2.6.3-py3-none-any.whl (131 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.9090308Z Downloading uvicorn-0.40.0-py3-none-any.whl (68 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.9225892Z Downloading wsproto-1.3.2-py3-none-any.whl (24 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.9359782Z Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.9501032Z Downloading certifi-2026.2.25-py3-none-any.whl (153 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.9646658Z Downloading packaging-26.0-py3-none-any.whl (74 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.9781328Z Downloading typing_extensions-4.15.0-py3-none-any.whl (44 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:27.9921016Z Downloading colorama-0.4.6-py2.py3-none-any.whl (25 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:28.0487884Z Installing collected packages: pyserial, pyelftools, bottle, urllib3, typing-extensions, tabulate, semantic_version, packaging, idna, h11, colorama, click, charset_normalizer, certifi, ajsonrpc, wsproto, uvicorn, requests, marshmallow, anyio, starlette, platformio
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:29.2454421Z 
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:29.2470719Z Successfully installed ajsonrpc-1.2.0 anyio-4.12.1 bottle-0.13.4 certifi-2026.2.25 charset_normalizer-3.4.6 click-8.3.1 colorama-0.4.6 h11-0.16.0 idna-3.11 marshmallow-3.26.2 packaging-26.0 platformio-6.1.19 pyelftools-0.32 pyserial-3.5 requests-2.32.5 semantic_version-2.10.0 starlette-0.52.1 tabulate-0.10.0 typing-extensions-4.15.0 urllib3-2.6.3 uvicorn-0.40.0 wsproto-1.3.2
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:29.4396763Z ##[group]Run pio run
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:29.4397021Z [36;1mpio run[0m
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:29.4448743Z shell: /usr/bin/bash -e {0}
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:29.4448964Z env:
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:29.4449227Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.15/x64
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:29.4449663Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib/pkgconfig
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:29.4450057Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:29.4450410Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:29.4450761Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:29.4451129Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:29.4513085Z ##[endgroup]
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:29.8043316Z ********************************************************************************
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:29.8044076Z If you like PlatformIO, please:
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:29.8044791Z - star it on GitHub > https://github.com/platformio/platformio-core
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:29.8045966Z - follow us on LinkedIn to stay up-to-date on the latest project news > https://www.linkedin.com/company/platformio/
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:29.8047209Z - try PlatformIO IDE for embedded development > https://platformio.org/platformio-ide
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:29.8048033Z ********************************************************************************
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:29.8048420Z 
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:29.8058280Z Processing mycobrain-side-a (platform: espressif32; board: esp32-s3-devkitc-1; framework: arduino)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:29.8059231Z --------------------------------------------------------------------------------
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:29.8064784Z Platform Manager: Installing espressif32
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:32.9476718Z Downloading 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:33.2023138Z Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:33.3424602Z Platform Manager: espressif32@6.13.0 has been installed!
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:33.3475201Z Tool Manager: Installing espressif/toolchain-xtensa-esp32s3 @ 8.4.0+2021r2-patch5
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:35.7623357Z Downloading 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:38.0915258Z Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:38.5328922Z Tool Manager: toolchain-xtensa-esp32s3@8.4.0+2021r2-patch5 has been installed!
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:38.5337770Z Tool Manager: Installing espressif/toolchain-riscv32-esp @ 8.4.0+2021r2-patch5
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:41.3593584Z Downloading 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:47.4004868Z Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:49.1426638Z Tool Manager: toolchain-riscv32-esp@8.4.0+2021r2-patch5 has been installed!
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:49.1436525Z Tool Manager: Installing platformio/framework-arduinoespressif32 @ ~3.20017.0
+build (side_a)	UNKNOWN STEP	2026-03-23T02:25:52.1491149Z Downloading 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:01.2038283Z Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:03.3818794Z Tool Manager: framework-arduinoespressif32@3.20017.241212+sha.dcc1105b has been installed!
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:03.3835153Z Tool Manager: Installing platformio/tool-esptoolpy @ ~2.41100.0
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:05.2965375Z Downloading 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:05.3606228Z Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:06.0329033Z Collecting cryptography~=45.0.3
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:06.1463430Z   Downloading cryptography-45.0.7-cp311-abi3-manylinux_2_34_x86_64.whl.metadata (5.7 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:06.1867763Z Collecting ecdsa~=0.19.1
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:06.2029370Z   Downloading ecdsa-0.19.1-py2.py3-none-any.whl.metadata (29 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:06.2449286Z Collecting bitstring~=4.3.1
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:06.2609602Z   Downloading bitstring-4.3.1-py3-none-any.whl.metadata (5.3 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:06.2924882Z Collecting reedsolo~=1.7.0
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:06.3112895Z   Downloading reedsolo-1.7.0-py3-none-any.whl.metadata (23 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:06.3415697Z Collecting intelhex~=2.3.0
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:06.3593894Z   Downloading intelhex-2.3.0-py2.py3-none-any.whl.metadata (2.7 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:06.4627773Z Collecting cffi>=1.14 (from cryptography~=45.0.3)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:06.4796423Z   Downloading cffi-2.0.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (2.6 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:06.5064833Z Collecting six>=1.9.0 (from ecdsa~=0.19.1)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:06.5406104Z   Downloading six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:06.8019219Z Collecting bitarray<4.0,>=3.0.0 (from bitstring~=4.3.1)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:06.8208413Z   Downloading bitarray-3.8.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (34 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:06.8608958Z Collecting pycparser (from cffi>=1.14->cryptography~=45.0.3)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:06.8769613Z   Downloading pycparser-3.0-py3-none-any.whl.metadata (8.2 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:06.9008491Z Downloading cryptography-45.0.7-cp311-abi3-manylinux_2_34_x86_64.whl (4.5 MB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:07.3343558Z    ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 4.5/4.5 MB 11.1 MB/s  0:00:00
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:07.3497821Z Downloading ecdsa-0.19.1-py2.py3-none-any.whl (150 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:07.3739144Z Downloading bitstring-4.3.1-py3-none-any.whl (71 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:07.3942053Z Downloading reedsolo-1.7.0-py3-none-any.whl (32 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:07.4135778Z Downloading intelhex-2.3.0-py2.py3-none-any.whl (50 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:07.4333065Z Downloading bitarray-3.8.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (337 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:07.4663988Z Downloading cffi-2.0.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (215 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:07.4916150Z Downloading six-1.17.0-py2.py3-none-any.whl (11 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:07.5087103Z Downloading pycparser-3.0-py3-none-any.whl (48 kB)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:07.5525400Z Installing collected packages: reedsolo, intelhex, bitarray, six, pycparser, bitstring, ecdsa, cffi, cryptography
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:07.6744517Z 
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:07.6755164Z Successfully installed bitarray-3.8.0 bitstring-4.3.1 cffi-2.0.0 cryptography-45.0.7 ecdsa-0.19.1 intelhex-2.3.0 pycparser-3.0 reedsolo-1.7.0 six-1.17.0
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:07.7726559Z Tool Manager: tool-esptoolpy@2.41100.0 has been installed!
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:07.7765288Z Tool Manager: Installing platformio/tool-scons @ ~4.40801.0
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:09.6406519Z Downloading 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:09.7063624Z Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:09.7353971Z Tool Manager: tool-scons@4.40801.0 has been installed!
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:09.7404549Z Library Manager: Installing makuna/NeoPixelBus @ ^2.7.9
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:12.2183592Z Downloading 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:12.2746071Z Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:12.3070719Z Library Manager: NeoPixelBus@2.8.4 has been installed!
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:12.3073491Z Library Manager: Resolving dependencies...
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:12.3181355Z Library Manager: Installing bblanchon/ArduinoJson @ ^7.0.0
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:14.6501207Z Downloading 0% 10% 20% 30% 40% 50% 60% 70% 80% 90%
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:14.6882681Z Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:14.7116792Z Library Manager: ArduinoJson@7.4.3 has been installed!
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.2100712Z Verbose mode can be enabled via `-v, --verbose` option
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.2208632Z CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/esp32-s3-devkitc-1.html
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.2210114Z PLATFORM: Espressif 32 (6.13.0) > Espressif ESP32-S3-DevKitC-1-N8 (8 MB QD, No PSRAM)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.2211103Z HARDWARE: ESP32S3 240MHz, 320KB RAM, 8MB Flash
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.2212618Z DEBUG: Current (esp-builtin) On-board (esp-builtin) External (cmsis-dap, esp-bridge, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.2213659Z PACKAGES: 
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.2214270Z  - framework-arduinoespressif32 @ 3.20017.241212+sha.dcc1105b 
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.2214801Z  - tool-esptoolpy @ 2.41100.0 (4.11.0) 
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.2215128Z  - toolchain-riscv32-esp @ 8.4.0+2021r2-patch5 
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.2215488Z  - toolchain-xtensa-esp32s3 @ 8.4.0+2021r2-patch5
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.2465003Z LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.2465542Z LDF Modes: Finder ~ chain, Compatibility ~ soft
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.3606186Z Found 48 compatible libraries
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.3606556Z Scanning dependencies...
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.5259596Z Dependency Graph
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.5260733Z |-- NeoPixelBus @ 2.8.4
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.5263897Z |-- ArduinoJson @ 7.4.3
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.5264278Z |-- side_a
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.5264816Z |-- Preferences @ 2.0.0
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.5265605Z |-- Wire @ 2.0.0
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.5519918Z Building in release mode
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.7803624Z Compiling .pio/build/mycobrain-side-a/src/buzzer.cpp.o
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.8087458Z Compiling .pio/build/mycobrain-side-a/src/main.cpp.o
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9067394Z In file included from /home/runner/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-gpio.h:29,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9070944Z                  from /home/runner/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h:83,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9072479Z                  from /home/runner/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h:36,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9073373Z                  from include/buzzer.h:12,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9073845Z                  from src/buzzer.cpp:8:
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9074938Z /home/runner/.platformio/packages/framework-arduinoespressif32/variants/esp32s3/pins_arduino.h:13: warning: "PIN_NEOPIXEL" redefined
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9076065Z  #define PIN_NEOPIXEL        48
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9076453Z  
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9076922Z <command-line>: note: this is the location of the previous definition
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9253844Z In file included from /home/runner/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-gpio.h:29,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9263229Z                  from /home/runner/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h:83,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9264545Z                  from /home/runner/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h:36,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9265439Z                  from src/main.cpp:11:
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9266525Z /home/runner/.platformio/packages/framework-arduinoespressif32/variants/esp32s3/pins_arduino.h:13: warning: "PIN_NEOPIXEL" redefined
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9267657Z  #define PIN_NEOPIXEL        48
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9268038Z  
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9269414Z <command-line>: note: this is the location of the previous definition
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9380259Z Compiling .pio/build/mycobrain-side-a/src/pixel.cpp.o
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9460257Z Building .pio/build/mycobrain-side-a/bootloader.bin
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.0652005Z In file included from /home/runner/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-gpio.h:29,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.0653947Z                  from /home/runner/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h:83,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.0655151Z                  from /home/runner/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h:36,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.0656050Z                  from include/pixel.h:12,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.0656518Z                  from src/pixel.cpp:8:
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.0657536Z /home/runner/.platformio/packages/framework-arduinoespressif32/variants/esp32s3/pins_arduino.h:13: warning: "PIN_NEOPIXEL" redefined
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.0658627Z  #define PIN_NEOPIXEL        48
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.0659000Z  
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.0662864Z <command-line>: note: this is the location of the previous definition
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.1574466Z esptool.py v4.11.0
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.1574873Z Creating esp32s3 image...
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.1577468Z Merged 1 ELF section
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.1579600Z Successfully created esp32s3 image.
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.1740479Z Generating partitions .pio/build/mycobrain-side-a/partitions.bin
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3253792Z src/main.cpp: In function 'bool buildTelemetryEnvelope(uint32_t, uint32_t, uint8_t*, uint16_t*)':
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3255585Z src/main.cpp:393:5: error: 'ai_volts' was not declared in this scope
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3256546Z      ai_volts[0], ai_volts[1], ai_volts[2], ai_volts[3],
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3256990Z      ^~~~~~~~
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3264280Z src/main.cpp:394:5: error: 'mos_state' was not declared in this scope
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3265038Z      mos_state[0] ? 1 : 0, mos_state[1] ? 1 : 0, mos_state[2] ? 1 : 0
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3265570Z      ^~~~~~~~~
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3292479Z src/main.cpp:394:5: note: suggested alternative: 'dhcps_state'
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3293244Z      mos_state[0] ? 1 : 0, mos_state[1] ? 1 : 0, mos_state[2] ? 1 : 0
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3293801Z      ^~~~~~~~~
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3294152Z      dhcps_state
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3307498Z src/main.cpp: In function 'void durableReplayInit()':
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3308268Z src/main.cpp:485:5: error: 'txEnqueue' was not declared in this scope
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3308833Z      txEnqueue(buf, len, hdr->seq, true);
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3309270Z      ^~~~~~~~~
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3335120Z src/main.cpp:485:5: note: suggested alternative: 'sigqueue'
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3335724Z      txEnqueue(buf, len, hdr->seq, true);
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3354578Z      ^~~~~~~~~
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3354877Z      sigqueue
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3355353Z src/main.cpp:486:5: error: 'uartSendCOBS' was not declared in this scope
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3355982Z      uartSendCOBS(buf, len);
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3356310Z      ^~~~~~~~~~~~
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3377607Z src/main.cpp:486:5: note: suggested alternative: 'uartSetMode'
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3378199Z      uartSendCOBS(buf, len);
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3378576Z      ^~~~~~~~~~~~
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3378899Z      uartSetMode
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.4256210Z Compiling .pio/build/mycobrain-side-a/lib30b/SPI/SPI.cpp.o
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.4297643Z *** [.pio/build/mycobrain-side-a/src/main.cpp.o] Error 1
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.4643488Z In file included from /home/runner/.platformio/packages/framework-arduinoespressif32/libraries/SPI/src/SPI.h:25,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.4646735Z                  from /home/runner/.platformio/packages/framework-arduinoespressif32/libraries/SPI/src/SPI.cpp:22:
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.4648244Z /home/runner/.platformio/packages/framework-arduinoespressif32/variants/esp32s3/pins_arduino.h:13: warning: "PIN_NEOPIXEL" redefined
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.4649312Z  #define PIN_NEOPIXEL        48
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.4649685Z  
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.4650124Z <command-line>: note: this is the location of the previous definition
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.9313262Z ========================= [FAILED] Took 47.13 seconds =========================
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:17.9617546Z ##[error]Process completed with exit code 1.
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:17.9723956Z Post job cleanup.
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.0677847Z [command]/usr/bin/git version
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.0715494Z git version 2.53.0
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.0758310Z Temporarily overriding HOME='/home/runner/work/_temp/56784a87-0fba-4fb4-bc25-64cf485e77ac' before making global git config changes
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.0759595Z Adding repository directory to the temporary git global config as a safe directory
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.0770684Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/mycobrain/mycobrain
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.0805898Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.0840910Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.1089077Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.1111138Z http.https://github.com/.extraheader
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.1124092Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.1157047Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.1395534Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.1428543Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.1767802Z Cleaning up orphan processes
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.2081498Z ##[warning]Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and may not work as expected: actions/checkout@v4, actions/setup-python@v5. Actions will be forced to run with Node.js 24 by default starting June 2nd, 2026. Please check if updated versions of these actions are available that support Node.js 24. To opt into Node.js 24 now, set the FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment variable on the runner or in your workflow file. Once Node.js 24 becomes the default, you can temporarily opt out by setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

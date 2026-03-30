@@ -1,0 +1,100 @@
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.2215128Z  - toolchain-riscv32-esp @ 8.4.0+2021r2-patch5 
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.2215488Z  - toolchain-xtensa-esp32s3 @ 8.4.0+2021r2-patch5
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.2465003Z LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.2465542Z LDF Modes: Finder ~ chain, Compatibility ~ soft
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.3606186Z Found 48 compatible libraries
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.3606556Z Scanning dependencies...
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.5259596Z Dependency Graph
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.5260733Z |-- NeoPixelBus @ 2.8.4
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.5263897Z |-- ArduinoJson @ 7.4.3
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.5264278Z |-- side_a
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.5264816Z |-- Preferences @ 2.0.0
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.5265605Z |-- Wire @ 2.0.0
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.5519918Z Building in release mode
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.7803624Z Compiling .pio/build/mycobrain-side-a/src/buzzer.cpp.o
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.8087458Z Compiling .pio/build/mycobrain-side-a/src/main.cpp.o
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9067394Z In file included from /home/runner/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-gpio.h:29,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9070944Z                  from /home/runner/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h:83,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9072479Z                  from /home/runner/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h:36,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9073373Z                  from include/buzzer.h:12,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9073845Z                  from src/buzzer.cpp:8:
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9074938Z /home/runner/.platformio/packages/framework-arduinoespressif32/variants/esp32s3/pins_arduino.h:13: warning: "PIN_NEOPIXEL" redefined
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9076065Z  #define PIN_NEOPIXEL        48
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9076453Z  
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9076922Z <command-line>: note: this is the location of the previous definition
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9253844Z In file included from /home/runner/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-gpio.h:29,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9263229Z                  from /home/runner/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h:83,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9264545Z                  from /home/runner/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h:36,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9265439Z                  from src/main.cpp:11:
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9266525Z /home/runner/.platformio/packages/framework-arduinoespressif32/variants/esp32s3/pins_arduino.h:13: warning: "PIN_NEOPIXEL" redefined
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9267657Z  #define PIN_NEOPIXEL        48
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9268038Z  
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9269414Z <command-line>: note: this is the location of the previous definition
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9380259Z Compiling .pio/build/mycobrain-side-a/src/pixel.cpp.o
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:15.9460257Z Building .pio/build/mycobrain-side-a/bootloader.bin
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.0652005Z In file included from /home/runner/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-gpio.h:29,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.0653947Z                  from /home/runner/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h:83,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.0655151Z                  from /home/runner/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h:36,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.0656050Z                  from include/pixel.h:12,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.0656518Z                  from src/pixel.cpp:8:
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.0657536Z /home/runner/.platformio/packages/framework-arduinoespressif32/variants/esp32s3/pins_arduino.h:13: warning: "PIN_NEOPIXEL" redefined
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.0658627Z  #define PIN_NEOPIXEL        48
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.0659000Z  
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.0662864Z <command-line>: note: this is the location of the previous definition
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.1574466Z esptool.py v4.11.0
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.1574873Z Creating esp32s3 image...
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.1577468Z Merged 1 ELF section
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.1579600Z Successfully created esp32s3 image.
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.1740479Z Generating partitions .pio/build/mycobrain-side-a/partitions.bin
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3253792Z src/main.cpp: In function 'bool buildTelemetryEnvelope(uint32_t, uint32_t, uint8_t*, uint16_t*)':
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3255585Z src/main.cpp:393:5: error: 'ai_volts' was not declared in this scope
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3256546Z      ai_volts[0], ai_volts[1], ai_volts[2], ai_volts[3],
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3256990Z      ^~~~~~~~
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3264280Z src/main.cpp:394:5: error: 'mos_state' was not declared in this scope
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3265038Z      mos_state[0] ? 1 : 0, mos_state[1] ? 1 : 0, mos_state[2] ? 1 : 0
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3265570Z      ^~~~~~~~~
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3292479Z src/main.cpp:394:5: note: suggested alternative: 'dhcps_state'
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3293244Z      mos_state[0] ? 1 : 0, mos_state[1] ? 1 : 0, mos_state[2] ? 1 : 0
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3293801Z      ^~~~~~~~~
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3294152Z      dhcps_state
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3307498Z src/main.cpp: In function 'void durableReplayInit()':
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3308268Z src/main.cpp:485:5: error: 'txEnqueue' was not declared in this scope
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3308833Z      txEnqueue(buf, len, hdr->seq, true);
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3309270Z      ^~~~~~~~~
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3335120Z src/main.cpp:485:5: note: suggested alternative: 'sigqueue'
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3335724Z      txEnqueue(buf, len, hdr->seq, true);
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3354578Z      ^~~~~~~~~
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3354877Z      sigqueue
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3355353Z src/main.cpp:486:5: error: 'uartSendCOBS' was not declared in this scope
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3355982Z      uartSendCOBS(buf, len);
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3356310Z      ^~~~~~~~~~~~
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3377607Z src/main.cpp:486:5: note: suggested alternative: 'uartSetMode'
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3378199Z      uartSendCOBS(buf, len);
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3378576Z      ^~~~~~~~~~~~
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.3378899Z      uartSetMode
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.4256210Z Compiling .pio/build/mycobrain-side-a/lib30b/SPI/SPI.cpp.o
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.4297643Z *** [.pio/build/mycobrain-side-a/src/main.cpp.o] Error 1
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.4643488Z In file included from /home/runner/.platformio/packages/framework-arduinoespressif32/libraries/SPI/src/SPI.h:25,
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.4646735Z                  from /home/runner/.platformio/packages/framework-arduinoespressif32/libraries/SPI/src/SPI.cpp:22:
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.4648244Z /home/runner/.platformio/packages/framework-arduinoespressif32/variants/esp32s3/pins_arduino.h:13: warning: "PIN_NEOPIXEL" redefined
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.4649312Z  #define PIN_NEOPIXEL        48
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.4649685Z  
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.4650124Z <command-line>: note: this is the location of the previous definition
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:16.9313262Z ========================= [FAILED] Took 47.13 seconds =========================
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:17.9617546Z ##[error]Process completed with exit code 1.
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:17.9723956Z Post job cleanup.
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.0677847Z [command]/usr/bin/git version
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.0715494Z git version 2.53.0
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.0758310Z Temporarily overriding HOME='/home/runner/work/_temp/56784a87-0fba-4fb4-bc25-64cf485e77ac' before making global git config changes
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.0759595Z Adding repository directory to the temporary git global config as a safe directory
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.0770684Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/mycobrain/mycobrain
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.0805898Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.0840910Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.1089077Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.1111138Z http.https://github.com/.extraheader
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.1124092Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.1157047Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.1395534Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.1428543Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.1767802Z Cleaning up orphan processes
+build (side_a)	UNKNOWN STEP	2026-03-23T02:26:18.2081498Z ##[warning]Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and may not work as expected: actions/checkout@v4, actions/setup-python@v5. Actions will be forced to run with Node.js 24 by default starting June 2nd, 2026. Please check if updated versions of these actions are available that support Node.js 24. To opt into Node.js 24 now, set the FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment variable on the runner or in your workflow file. Once Node.js 24 becomes the default, you can temporarily opt out by setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

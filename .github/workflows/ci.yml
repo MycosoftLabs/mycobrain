@@ -27,3 +27,20 @@ jobs:
       - name: Build
         working-directory: firmware/${{ matrix.target }}
         run: pio run
+
+  agentic-fallback:
+    needs: build
+    if: always() && contains(needs.*.result, 'failure')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trigger Agentic Auto-Fix
+        run: |
+          echo "Build failed. Triggering Mycosoft Antigravity Agent for autonomous resolution..."
+          if [ -n "${{ secrets.AGENT_API_KEY }}" ]; then
+            curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer ${{ secrets.AGENT_API_KEY }}" \
+                 -d "{\"repo\": \"${{ github.repository }}\", \"run_id\": \"${{ github.run_id }}\"}" \
+                 https://api.mycosoft.com/agent/auto-fix || echo "Fallback triggered."
+          else
+            echo "Agentic hook called, awaiting implementation."
+          fi
