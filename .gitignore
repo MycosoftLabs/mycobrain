@@ -1,4 +1,4 @@
-# PlatformIO
+﻿# PlatformIO
 .pio/
 .vscode/
 pio_out.txt
@@ -18,3 +18,10 @@ Thumbs.db
 .idea/
 *.swp
 *~
+
+# Secrets / local MQTT password file (generate on deploy)
+MQTT/**/config/passwd
+
+# Large local backups — do not commit
+jetson_mycobrain/**/*.tar.gz
+**/mycobrain-workspace-backup-*/
