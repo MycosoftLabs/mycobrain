@@ -84,5 +84,30 @@ namespace AcousticModem {
 AcousticProfile acousticProfileFromName(const char* name);
 const char* acousticProfileName(AcousticProfile profile);
 
+// ============================================================================
+// MARITIME ACOUSTIC MODEM INTEROP (TAC-O)
+// ============================================================================
+
+typedef struct {
+    uint16_t zeeta_sensor_id;
+    uint8_t  data_type;       // 0x01=acoustic, 0x02=magnetic, 0x03=environmental
+    uint16_t payload_len;
+    uint32_t timestamp_ms;
+    uint8_t  payload[256];    // max payload size
+    uint16_t checksum;
+} zeeta_acoustic_frame_t;
+
+// Generic aliases for contractor-agnostic usage.
+typedef zeeta_acoustic_frame_t maritime_acoustic_frame_t;
+
+bool modem_rx_zeeta_frame(zeeta_acoustic_frame_t* frame);
+bool modem_tx_zeeta_command(uint16_t sensor_id, uint8_t cmd, uint8_t* data, uint16_t len);
+bool modem_validate_zeeta_checksum(const zeeta_acoustic_frame_t* frame);
+
+#define maritime_sensor_id zeeta_sensor_id
+#define modem_rx_maritime_frame modem_rx_zeeta_frame
+#define modem_tx_maritime_command modem_tx_zeeta_command
+#define modem_validate_maritime_checksum modem_validate_zeeta_checksum
+
 #endif // MODEM_AUDIO_H
 

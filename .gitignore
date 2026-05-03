@@ -1,6 +1,8 @@
 # PlatformIO
 .pio/
 .vscode/
+pio_out.txt
+**/pio_out.txt
 
 # Python
 __pycache__/

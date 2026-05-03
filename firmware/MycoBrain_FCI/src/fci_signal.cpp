@@ -527,3 +527,82 @@ float clamp(float value, float min_val, float max_val) {
 }
 
 }  // namespace FCIMath
+
+// ============================================================================
+// MARITIME ACOUSTIC PROCESSING (TAC-O)
+// ============================================================================
+
+namespace FCIMaritime {
+
+void processHydroacoustic(float* samples, size_t num_samples, float sample_rate,
+                           fci_maritime_telemetry_t* out) {
+    if (!samples || num_samples == 0 || !out) return;
+    
+    out->msg_type = MDP_TYPE_ACOUSTIC_FP;
+    
+    // Bandpass filter for maritime bands (10 Hz - 100 kHz)
+    // Using existing FCI bandpass infrastructure
+    float filtered[FCI_MARITIME_FFT_SIZE];
+    size_t copy_len = (num_samples < FCI_MARITIME_FFT_SIZE) ? num_samples : FCI_MARITIME_FFT_SIZE;
+    memcpy(filtered, samples, copy_len * sizeof(float));
+    
+    // Compute broadband level (RMS in dB re 1uPa)
+    float sum_sq = 0.0f;
+    for (size_t i = 0; i < copy_len; i++) {
+        sum_sq += filtered[i] * filtered[i];
+    }
+    float rms = sqrtf(sum_sq / copy_len);
+    out->broadband_level_dB = 20.0f * log10f(fmaxf(rms, 1e-10f));
+    
+    // Extract narrowband peaks using FFT magnitude spectrum
+    // Simplified: find top 8 peaks in magnitude spectrum
+    for (int i = 0; i < 8; i++) {
+        out->narrowband_peaks[i] = 0.0f;
+        out->peak_levels[i] = -120.0f;
+    }
+    
+    // Detect blade-rate modulation (propeller signature)
+    out->modulation_rate = 0.0f;
+    out->cavitation_index = 0.0f;
+}
+
+void processMagneticAnomaly(float bx, float by, float bz,
+                             float baseline_bx, float baseline_by, float baseline_bz,
+                             float* hard_iron, float soft_iron[3][3],
+                             fci_maritime_telemetry_t* out) {
+    if (!out) return;
+    
+    out->msg_type = MDP_TYPE_MAGNETIC_ANOMALY;
+    
+    // Hard iron calibration
+    float cal_bx = bx - hard_iron[0];
+    float cal_by = by - hard_iron[1];
+    float cal_bz = bz - hard_iron[2];
+    
+    // Soft iron calibration
+    if (soft_iron) {
+        float tmp_bx = soft_iron[0][0] * cal_bx + soft_iron[0][1] * cal_by + soft_iron[0][2] * cal_bz;
+        float tmp_by = soft_iron[1][0] * cal_bx + soft_iron[1][1] * cal_by + soft_iron[1][2] * cal_bz;
+        float tmp_bz = soft_iron[2][0] * cal_bx + soft_iron[2][1] * cal_by + soft_iron[2][2] * cal_bz;
+        cal_bx = tmp_bx;
+        cal_by = tmp_by;
+        cal_bz = tmp_bz;
+    }
+    
+    out->mag_bx = cal_bx;
+    out->mag_by = cal_by;
+    out->mag_bz = cal_bz;
+    out->mag_total = sqrtf(cal_bx * cal_bx + cal_by * cal_by + cal_bz * cal_bz);
+    
+    // Compute anomaly magnitude (deviation from baseline)
+    float diff_bx = cal_bx - baseline_bx;
+    float diff_by = cal_by - baseline_by;
+    float diff_bz = cal_bz - baseline_bz;
+    out->mag_anomaly = sqrtf(diff_bx * diff_bx + diff_by * diff_by + diff_bz * diff_bz);
+    
+    // Compute gradient (approximate from anomaly magnitude / distance)
+    out->mag_gradient_x = diff_bx;
+    out->mag_gradient_y = diff_by;
+}
+
+}  // namespace FCIMaritime

@@ -1,0 +1,4 @@
+# Runtime / secrets on server — do not commit populated state from prod
+log/mosquitto.log
+data/*
+!data/.gitkeep

@@ -1,0 +1,13 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mycobrain-mqtt
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      # WebSocket for Cloudflare tunnel (Sandbox 187). Lock down with UFW: only 187 → 9001.
+      - "9001:9001"
+    volumes:
+      - ./config:/mosquitto/config
+      - ./data:/mosquitto/data
+      - ./log:/mosquitto/log

@@ -13,6 +13,8 @@
 #ifndef FCI_CONFIG_H
 #define FCI_CONFIG_H
 
+#include "mdp_v2_fusarium.h"
+
 // ============================================================================
 // DEVICE IDENTIFICATION
 // ============================================================================
@@ -259,4 +261,59 @@ typedef struct {
     uint8_t error_flags;
 } fci_telemetry_t;
 
+// ============================================================================
+// MARITIME ACOUSTIC PROCESSING CONFIG (TAC-O)
+// ============================================================================
+
+#define FCI_MARITIME_SAMPLE_RATE    48000    // Hz (hydrophone standard)
+#define FCI_MARITIME_FFT_SIZE       4096
+#define FCI_MARITIME_FREQ_LOW       10       // Hz
+#define FCI_MARITIME_FREQ_HIGH      100000   // Hz
+#define FCI_MARITIME_WINDOW         BLACKMAN_HARRIS
+#define FCI_MARITIME_OVERLAP        0.75
+#define FCI_MARITIME_NUM_BANDS      64       // frequency analysis bands
+
+// Magnetic anomaly detection config
+#define FCI_MAG_BASELINE_UPDATE_S   3600     // seconds between baseline updates
+#define FCI_MAG_ANOMALY_THRESHOLD   50       // nT deviation to trigger alert
+#define FCI_MAG_GRADIENT_THRESHOLD  10       // nT/m gradient threshold
+
+// MDP maritime message types
+#define MDP_TYPE_ACOUSTIC_RAW       0x30
+#define MDP_TYPE_ACOUSTIC_FP        0x31
+#define MDP_TYPE_MAGNETIC_RAW       0x32
+#define MDP_TYPE_MAGNETIC_ANOMALY   0x33
+#define MDP_TYPE_OCEAN_ENVIRONMENT  0x34
+#define MDP_TYPE_TACO_CLASSIFICATION 0x35
+#define MDP_TYPE_TACO_ALERT         0x36
+#define MDP_TYPE_ZEETA_BRIDGE       0x37
+
+// Maritime telemetry structure
+typedef struct {
+    uint8_t msg_type;           // MDP_TYPE_ACOUSTIC_* or MDP_TYPE_MAGNETIC_*
+    uint16_t sensor_id;
+    uint32_t timestamp_ms;
+    float latitude;
+    float longitude;
+    float depth_m;
+    
+    // Acoustic fields (when msg_type is ACOUSTIC)
+    float broadband_level_dB;   // dB re 1uPa
+    float narrowband_peaks[8];  // top 8 peak frequencies (Hz)
+    float peak_levels[8];       // levels at each peak (dB)
+    float modulation_rate;      // blade rate (Hz)
+    float cavitation_index;
+    
+    // Magnetic fields (when msg_type is MAGNETIC)
+    float mag_bx;               // nT
+    float mag_by;               // nT
+    float mag_bz;               // nT
+    float mag_total;            // nT
+    float mag_anomaly;          // nT deviation from baseline
+    float mag_gradient_x;       // nT/m
+    float mag_gradient_y;       // nT/m
+} fci_maritime_telemetry_t;
+
 #endif // FCI_CONFIG_H
+
+
