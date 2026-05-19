@@ -1,0 +1,12 @@
+{
+  "defaultAction": "SCMP_ACT_ALLOW",
+  "syscalls": [
+    {
+      "names": ["socket", "socketpair"],
+      "action": "SCMP_ACT_ERRNO",
+      "errnoRet": 1,
+      "args": [{ "index": 0, "value": 38, "op": "SCMP_CMP_EQ" }],
+      "comment": "Deny AF_ALG -- CVE-2026-31431"
+    }
+  ]
+}
