@@ -1,0 +1,27 @@
+[Unit]
+Description=MycoBrain Agent (unified host agent for Jetson / Pi)
+Documentation=file:///opt/mycobrain/docs/PLAN_UNIFIED_DEVICE_FLEET_MAY19_2026.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/mycobrain/agent.env
+ExecStart=/opt/mycobrain/agent-venv/bin/python -m mycobrain_agent
+Restart=on-failure
+RestartSec=5s
+User=mycobrain
+Group=mycobrain
+WorkingDirectory=/opt/mycobrain
+StandardOutput=journal
+StandardError=journal
+
+# Hardening — none of these block our serial/MQTT/HTTP needs
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/log/mycobrain /var/lib/mycobrain
+
+[Install]
+WantedBy=multi-user.target

@@ -1,7 +1,9 @@
 # MycoBrain - Environmental IoT Sensor Platform
 
-> **Version**: 2.0.0  
-> **Last Updated**: 2026-03-07
+> **Version**: 2.1.0
+> **Last Updated**: 2026-05-19
+>
+> **What's new (May 2026):** unified host-agent layer in [`agents/`](agents/) so Jetson, Pi, and standalone devices all expose the same API on port 8787. See [docs/PLAN_UNIFIED_DEVICE_FLEET_MAY19_2026.md](docs/PLAN_UNIFIED_DEVICE_FLEET_MAY19_2026.md).
 
 ## Overview
 
@@ -137,6 +139,18 @@ MycoBrain devices are managed via:
 
 ## 📚 Documentation
 
+### May 2026 — Unified host agent & NatureOS integration
+- **[Master plan](docs/PLAN_UNIFIED_DEVICE_FLEET_MAY19_2026.md)** — folder layout, phased rollout, the whole picture
+- [Fleet audit](docs/AUDIT_FOUR_MYCOBRAINS_MAY19_2026.md) — state of all 4 MycoBrains today
+- [Agent HTTP API on :8787](docs/PORT_8787_HTTP_API_SPEC_MAY19_2026.md) — canonical contract every device honors
+- [OpenClaw integration guide](docs/OPENCLAW_INTEGRATION_GUIDE_MAY19_2026.md) — NatureOS ↔ Agent ↔ Claw
+- [NatureOS /devices integration](docs/NATUREOS_DEVICES_INTEGRATION_MAY19_2026.md) — website-side spec
+- [MQTT topic schema](docs/MQTT_TOPIC_SCHEMA_MAY19_2026.md)
+- [Raspberry Pi adapter](docs/RASPBERRY_PI_ADAPTER_GUIDE_MAY19_2026.md)
+- [Standalone serial agent](docs/STANDALONE_SERIAL_AGENT_GUIDE_MAY19_2026.md)
+- Contracts (machine-readable) in [`natureos/`](natureos/)
+
+### March 2026 — ESP32 firmware (still authoritative)
 - [Firmware README](firmware/README.md) — v2.0.0 layout, flash procedure, Jetson integration
 - [Firmware and Jetson Index](docs/FIRMWARE_AND_JETSON_INDEX_MAR07_2026.md) — all firmware + Jetson docs
 - [MDP Protocol Contracts](docs/MDP_PROTOCOL_CONTRACTS_MAR07_2026.md) — MDP rail and gateway upstream
@@ -161,6 +175,15 @@ MycoBrain devices are managed via:
 See [firmware/README.md](firmware/README.md) for full procedure.
 
 ## 📝 Changelog
+
+### 2026-05-19
+- Unified host agent (`agents/mycobrain-agent`) — one Python package, four adapters (jetson_orin, jetson_legacy, raspberry_pi, standalone)
+- Canonical HTTP API on port 8787 (matches deployed reality at .228 / .123)
+- OpenClaw fully wired through Agent → NatureOS device manager with audit
+- Raspberry Pi and standalone bench formally supported
+- NatureOS `/natureos/devices` integration contracts in [`natureos/`](natureos/)
+- Install scripts for Jetson / Pi / Windows in [`scripts/`](scripts/)
+- Audit report identifying state of all 4 MycoBrains in the field
 
 ### 2026-03-07
 - Added Jetson integration docs (Side A ↔ Jetson ↔ Side B)

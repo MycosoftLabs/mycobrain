@@ -1,0 +1,282 @@
+openapi: 3.0.3
+info:
+  title: MycoBrain Device APIs
+  version: "1.0.0"
+  description: |
+    Two surfaces in one spec:
+      1. **Agent on :8787** — runs on every MycoBrain compute companion
+      2. **Website /api/devices** — server-side proxy at mycosoft.com
+
+    Companion docs in ../docs/:
+    PLAN_UNIFIED_DEVICE_FLEET, PORT_8787_HTTP_API_SPEC,
+    NATUREOS_DEVICES_INTEGRATION, OPENCLAW_INTEGRATION_GUIDE,
+    MQTT_TOPIC_SCHEMA.
+
+servers:
+  - url: http://{host}:8787
+    description: Agent (LAN)
+    variables:
+      host:
+        default: 192.168.0.228
+  - url: https://mycosoft.com/api
+    description: Website proxy
+
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    pair:
+      type: apiKey
+      in: header
+      name: X-Pair-Token
+  schemas:
+    Device:
+      $ref: ./device-schema.json
+    CommandRequest:
+      type: object
+      required: [target, cmd]
+      properties:
+        target: { type: string, enum: [side_a, side_b] }
+        cmd: { type: string }
+        params: { type: object }
+        ack_requested: { type: boolean, default: true }
+        timeout_ms: { type: integer, default: 2000 }
+    CommandResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        seq: { type: integer }
+        ack:
+          type: object
+          properties:
+            received_at: { type: string, format: date-time }
+            success: { type: boolean }
+            message: { type: string }
+        telemetry: { type: object }
+    OpenClawActionRequest:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [open, close, home, move_to, grasp, release, calibrate, estop, clear_estop]
+        params: { type: object }
+        request_id: { type: string }
+        user_subject: { type: string }
+    OpenClawActionResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        request_id: { type: string }
+        audit_id: { type: integer }
+        started_at: { type: string, format: date-time }
+        completed_at: { type: string, format: date-time }
+        result: { type: object }
+
+paths:
+  /status:
+    get:
+      tags: [agent]
+      summary: Device + side-link + openclaw status
+      responses:
+        "200":
+          description: OK
+  /info:
+    get:
+      tags: [agent]
+      summary: Static-ish identity + capability info
+      responses:
+        "200":
+          description: OK
+  /telemetry/latest:
+    get:
+      tags: [agent]
+      summary: Latest Side A reading
+      responses:
+        "200": { description: OK }
+        "204": { description: No telemetry yet }
+  /command:
+    post:
+      tags: [agent]
+      security: [{ bearer: [] }, { pair: [] }]
+      summary: Send an MDP command to Side A or Side B
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommandRequest" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommandResponse" }
+        "400": { description: bad target or missing cmd }
+        "503": { description: link down }
+        "504": { description: ack timeout }
+  /openclaw/status:
+    get:
+      tags: [agent, openclaw]
+      summary: OpenClaw availability + state
+      responses:
+        "200": { description: OK }
+  /openclaw/action:
+    post:
+      tags: [agent, openclaw]
+      security: [{ bearer: [] }, { pair: [] }]
+      summary: Issue a claw action
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OpenClawActionRequest" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OpenClawActionResponse" }
+        "409": { description: openclaw unavailable }
+        "423": { description: estop latched }
+        "502": { description: openclaw unreachable }
+        "504": { description: action timeout }
+  /mdp/frames:
+    get:
+      tags: [agent, debug]
+      summary: Rolling MDP frame tail
+      parameters:
+        - in: query
+          name: since
+          schema: { type: integer }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 200 }
+      responses:
+        "200": { description: OK }
+  /ws/telemetry:
+    get:
+      tags: [agent]
+      summary: WebSocket — live telemetry + events + frame tail
+      responses:
+        "101": { description: switching protocols }
+  /pair:
+    post:
+      tags: [agent, pairing]
+      summary: One-shot pairing handshake
+      responses:
+        "200": { description: paired }
+        "410": { description: already paired (reset to repair) }
+
+  /devices/network:
+    get:
+      tags: [website]
+      security: [{ bearer: [] }]
+      summary: List every paired device with last presence
+      responses:
+        "200": { description: OK }
+  /devices/{id}:
+    get:
+      tags: [website]
+      security: [{ bearer: [] }]
+      summary: Full device record
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: OK }
+        "404": { description: not found }
+  /devices/{id}/command:
+    post:
+      tags: [website]
+      security: [{ bearer: [] }]
+      summary: Proxy to agent :8787/command
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommandRequest" }
+      responses:
+        "200": { description: OK }
+  /devices/{id}/openclaw/action:
+    post:
+      tags: [website, openclaw]
+      security: [{ bearer: [] }]
+      summary: Proxy to agent :8787/openclaw/action
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OpenClawActionRequest" }
+      responses:
+        "200": { description: OK }
+  /devices/heartbeat:
+    post:
+      tags: [website]
+      summary: Inbound agent heartbeat (every 30s)
+      responses:
+        "204": { description: accepted }
+  /devices/{id}/telemetry:
+    get:
+      tags: [website]
+      security: [{ bearer: [] }]
+      summary: Time-range telemetry (from MINDEX)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: query
+          name: from
+          schema: { type: string, format: date-time }
+        - in: query
+          name: to
+          schema: { type: string, format: date-time }
+        - in: query
+          name: resolution
+          schema: { type: string, enum: [raw, 1m, 5m, 1h] }
+      responses:
+        "200": { description: OK }
+  /devices/{id}/pair:
+    post:
+      tags: [website, pairing]
+      security: [{ bearer: [] }]
+      summary: Pair-wizard handshake
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: paired }
+  /devices/{id}/audit:
+    get:
+      tags: [website]
+      security: [{ bearer: [] }]
+      summary: Audit log entries
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50 }
+        - in: query
+          name: phase
+          schema: { type: string, enum: [received, started, completed, failed] }
+      responses:
+        "200": { description: OK }
