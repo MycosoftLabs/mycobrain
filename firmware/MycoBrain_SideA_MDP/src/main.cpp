@@ -12,6 +12,12 @@
 #include "config.h"
 #include "mdp_codec.h"
 
+#if CAPTIVE_PORTAL
+  #include "portal/portal_manager.h"
+  #include "portal/wifi_manager.h"
+  #include "config/config_manager.h"
+#endif
+
 #define USE_EXTERNAL_BLOB 1
 #if USE_EXTERNAL_BLOB
   #include "bsec_selectivity.h"
@@ -890,10 +896,26 @@ void setup() {
   initBuzzer();
   initSensors();
   send_hello();
+
+#if CAPTIVE_PORTAL
+  // Captive portal + WiFi device manager.  Non-blocking; portal_manager
+  // handles AP vs STA mode internally from saved config.  See
+  // docs/CAPTIVE_PORTAL_INTEGRATION_PLAN_MAY21.md for the full picture.
+  ConfigManager::begin();
+  WiFiManager::begin(ConfigManager::wifi());
+  PortalManager::begin();
+#endif
 }
 
 void loop() {
   esp_task_wdt_reset();
+
+#if CAPTIVE_PORTAL
+  // Service the portal + WiFi state machines.  Both are non-blocking
+  // and typically return in tens of microseconds when nothing is happening.
+  PortalManager::loop();
+  WiFiManager::loop();
+#endif
 
   while (Serial.available() > 0) {
     uint8_t b = (uint8_t)Serial.read();
