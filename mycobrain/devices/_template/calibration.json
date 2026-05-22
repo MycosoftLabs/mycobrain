@@ -1,0 +1,8 @@
+{
+  "analog_offset": [0.0, 0.0, 0.0, 0.0],
+  "analog_gain": [1.0, 1.0, 1.0, 1.0],
+  "adc_reference": 3.3,
+  "bme_temp_offset": 0.0,
+  "bme_humidity_offset": 0.0,
+  "_comment": "Filled in after first calibration run; see calibrate.py in tools/python/"
+}
