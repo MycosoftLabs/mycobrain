@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MycoBrain Portal</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>MycoBrain Configuration</h1>
+        </header>
+
+        <!-- Live Sensor Readings -->
+        <section class="card">
+            <h2>Live Sensor Readings</h2>
+            <div id="sensor-status" class="status">Connecting...</div>
+            <div class="sensor-grid">
+                <div class="sensor-item">
+                    <label>AI1:</label>
+                    <span id="ai1">--</span> V
+                </div>
+                <div class="sensor-item">
+                    <label>AI2:</label>
+                    <span id="ai2">--</span> V
+                </div>
+                <div class="sensor-item">
+                    <label>AI3:</label>
+                    <span id="ai3">--</span> V
+                </div>
+                <div class="sensor-item">
+                    <label>AI4:</label>
+                    <span id="ai4">--</span> V
+                </div>
+                <div class="sensor-item">
+                    <label>MOS1:</label>
+                    <span id="mos1">--</span>
+                </div>
+                <div class="sensor-item">
+                    <label>MOS2:</label>
+                    <span id="mos2">--</span>
+                </div>
+                <div class="sensor-item">
+                    <label>MOS3:</label>
+                    <span id="mos3">--</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- WiFi Configuration -->
+        <section class="card">
+            <h2>WiFi Configuration</h2>
+            <div id="wifi-status" class="status"></div>
+            <form id="wifi-form">
+                <div class="form-group">
+                    <label>WiFi Mode:</label>
+                    <select id="wifi-mode" name="wifi_mode">
+                        <option value="0">AP Only</option>
+                        <option value="1">STA Only</option>
+                        <option value="2">AP+STA</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>AP SSID:</label>
+                    <input type="text" id="ap-ssid" name="ap_ssid" maxlength="32" required>
+                </div>
+                <div class="form-group">
+                    <label>AP Password:</label>
+                    <input type="password" id="ap-password" name="ap_password" maxlength="64" required>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="sta-enabled" name="sta_enabled">
+                        Enable STA Mode
+                    </label>
+                </div>
+                <div id="sta-config" style="display: none;">
+                    <div class="form-group">
+                        <label>STA SSID:</label>
+                        <input type="text" id="sta-ssid" name="sta_ssid" maxlength="32">
+                    </div>
+                    <div class="form-group">
+                        <label>STA Password:</label>
+                        <input type="password" id="sta-password" name="sta_password" maxlength="64">
+                    </div>
+                </div>
+                <button type="submit">Save WiFi Config</button>
+            </form>
+        </section>
+
+        <!-- Calibration -->
+        <section class="card">
+            <h2>Calibration</h2>
+            <form id="calibration-form">
+                <div class="form-group">
+                    <label>ADC Reference Voltage:</label>
+                    <input type="number" id="adc-ref" name="adc_reference" step="0.01" min="1.0" max="5.0" value="3.3">
+                </div>
+                <h3>Analog Inputs</h3>
+                <div id="analog-calibration"></div>
+                <div class="form-group">
+                    <label>BME Temperature Offset:</label>
+                    <input type="number" id="bme-temp-offset" name="bme_temp_offset" step="0.1" value="0.0">
+                </div>
+                <div class="form-group">
+                    <label>BME Humidity Offset:</label>
+                    <input type="number" id="bme-humidity-offset" name="bme_humidity_offset" step="0.1" value="0.0">
+                </div>
+                <button type="submit">Save Calibration</button>
+            </form>
+        </section>
+
+        <!-- Pin Assignment -->
+        <section class="card">
+            <h2>Pin Assignment</h2>
+            <form id="pins-form">
+                <h3>Analog Inputs</h3>
+                <div id="ai-pins"></div>
+                <h3>MOSFET Outputs</h3>
+                <div id="mos-pins"></div>
+                <div class="form-group">
+                    <label>I2C SDA:</label>
+                    <input type="number" id="i2c-sda" name="i2c_sda" min="0" max="48" value="4">
+                </div>
+                <div class="form-group">
+                    <label>I2C SCL:</label>
+                    <input type="number" id="i2c-scl" name="i2c_scl" min="0" max="48" value="5">
+                </div>
+                <button type="submit">Save Pin Config</button>
+            </form>
+        </section>
+
+        <!-- Thresholds -->
+        <section class="card">
+            <h2>Thresholds</h2>
+            <form id="thresholds-form">
+                <div id="threshold-config"></div>
+                <button type="submit">Save Thresholds</button>
+            </form>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+
