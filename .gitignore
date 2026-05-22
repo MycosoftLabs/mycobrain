@@ -25,3 +25,12 @@ MQTT/**/config/passwd
 # Large local backups — do not commit
 jetson_mycobrain/**/*.tar.gz
 **/mycobrain-workspace-backup-*/
+
+# Probe outputs — captured per-run, never committed
+probe_*.txt
+probe_done.flag
+probe_run.log
+
+# Temporary RUN.bat launchers that embed secrets — delete after one-time use
+**/_install-github-mcp-RUN.bat
+**/_*-RUN.bat
