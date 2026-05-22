@@ -101,3 +101,39 @@ scripts/                                ← Bootstrap (top-level)
 ---
 
 **Total deliverables:** 7 new docs, 1 OpenAPI contract, 1 JSON Schema, 4 UI/auth specs, 1 Python package with codec/adapters/HTTP/MQTT/OpenClaw scaffolds, 4 install scripts, 4 env templates, 1 systemd unit, 1 Windows service installer, 1 test module, updated top-level README.
+
+## Follow-up shipped 2026-05-21
+
+After PR #4 (https://github.com/MycosoftLabs/mycobrain/pull/4) landed, three more pieces were added to make the next session frictionless:
+
+- **`scripts/install-github-mcp.ps1`** — automates installing the official `@modelcontextprotocol/server-github` MCP into Cowork's `claude_desktop_config.json`. Backs up existing config, prompts for or accepts a PAT, verifies on write, optionally restarts Cowork. After this runs, future Cowork sessions can `create_pr`, `push_file`, `list_issues`, etc. directly.
+- **`tools/python/fleet_status.py`** — stdlib-only poller that hits every paired MycoBrain agent's `:8787/status` + `/info` and prints a single table (host / device_id / host_kind / side_a / side_b / openclaw / mqtt / agent_v). Use it during Phase 2/5 verification and as an ongoing health check.
+- **`scripts/push-followup.ps1`** — pushes those two onto the same feature branch (or a fresh follow-up branch).
+
+**Why these exist:**
+- The GitHub MCP installer closes the loop on the only real bottleneck that surfaced during PR #4 — Cowork had no GitHub connector configured, so the push had to go through PowerShell. With this installed, the next session pushes from chat.
+- `fleet_status.py` is the verification command for Phase 5 ("verification pass") in the master plan. It uses only stdlib so it runs anywhere Python runs — no `pip install` needed on the Jetsons.
+
+**Run them:**
+```powershell
+# One-time: install the GitHub MCP into Cowork
+.\scripts\install-github-mcp.ps1 -Token ghp_yourPATgoesHere -Restart
+
+# Anytime: poll the fleet
+python tools\python\fleet_status.py
+
+# Commit + push these to the existing PR branch
+.\scripts\push-followup.ps1
+```
+
+## Still owed (carried into a future session)
+
+These need either probe output or a physical interaction Claude can't do from cloud tools:
+
+- **COM4 probe** — run `python tools\python\probe_com.py COM4` on this PC and paste output (or save to `probe_com4.txt`). Tells us whether the bench MycoBrain is on MDP or legacy JSON firmware.
+- **Two Jetson probes** — run `ssh jetson@192.168.0.228 'bash -s' < scripts\probe-jetson.sh > probe_jet228.txt` and the same for `.123`. Tells us exactly what's listening on `:8787` today, so we can diff against the new agent spec and write compat shims if needed.
+- **Cut over** — once the diff is clear, install the unified agent on both Jetsons via `scripts/agent-install-jetson.sh` (or run dry-run alongside the existing service first).
+- **Standalone bench install** — pick the COM port (4 per current session), run `scripts/agent-install-standalone.ps1 -Port COM4` after the probe confirms which protocol.
+- **Older Jetson cold-boot** — `scripts/bootstrap-dead-jetson.sh` once the box is powered on.
+
+When you come back, just run the probe block; outputs land in `.txt` files I'll read directly.

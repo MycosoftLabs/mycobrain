@@ -188,19 +188,19 @@ Issue a claw action. The agent proxies to OpenClaw at `127.0.0.1:8000` with the 
 }
 ```
 
-**Supported actions:**
+**Supported actions** (reconciled 2026-05-21 with the actual MDP claw commands in `firmware/common/mdp_claw.h` on the `claude/integrate-seeed-claw-SPwlV` branch):
 
-| action | params |
-|--------|--------|
-| `open` | `{}` |
-| `close` | `{ "force_n": float }` |
-| `home` | `{}` |
-| `move_to` | `{ "joint_1": float, "joint_2": float, ... }` |
-| `grasp` | `{ "force_n": float, "timeout_ms": int }` |
-| `release` | `{}` |
-| `calibrate` | `{ "mode": "quick"|"full" }` |
-| `estop` | `{}` |
-| `clear_estop` | `{}` |
+| action | params | MDP command | MDP ID |
+|--------|--------|-------------|--------|
+| `grip` | `{}` | `claw_grip` | `0x0030` |
+| `release` | `{}` | `claw_release` | `0x0031` |
+| `position` | `{ "angle": 0–180 }` | `claw_position` | `0x0032` |
+| `status` | `{}` | `claw_status` | `0x0033` |
+| `calibrate` | `{}` | `claw_calibrate` | `0x0034` |
+| `estop` | `{}` | `estop` | (Side A cross-cutting) |
+| `clear_estop` | `{}` | `clear_estop` | (Side A cross-cutting) |
+
+**Retired action names** (returns 405 with hint): `open` → `release`, `close` → `grip`, `home` → `position`, `move_to` → `position`, `grasp` → `grip`. The earlier high-level vocabulary (grasp / move_to / home) doesn't match the firmware — the Nemo claw is single-axis servo with a release angle and a grip angle, not a multi-joint arm. See [`OPENCLAW_INTEGRATION_GUIDE_MAY19_2026.md`](OPENCLAW_INTEGRATION_GUIDE_MAY19_2026.md) for the full reconciliation.
 
 **Response:**
 ```json
@@ -293,15 +293,4 @@ After pairing the agent enforces `AGENT_AUTH_MODE=jwt` for all writes regardless
 | Old (March docs) | New (this spec) | Why |
 |------------------|-----------------|-----|
 | On-device operator on **8110** | **8787** for everything | Match deployed reality on .228 and .123 |
-| Gateway router on **8120** | **8787** (same agent, different env) | One process per device makes ops simpler |
-| Verification curl on **8080** | **8787** | See above |
-| `/side-a/command`, `/side-b/command` | Unified `/command` with `target` | Cleaner contract for NatureOS |
-| Health: `/health` | `/healthz` + `/readyz` | k8s/systemd convention; old `/health` returns 308 to `/healthz` |
-
-The agent ships with a tiny **compatibility shim** so existing dashboards using `:8110`/`:8120`/`:8080` continue to work (via 308 redirects to 8787) until they're updated.
-
----
-
-## Reference implementation
-
-Skeleton lives at [`../agents/src/mycobrain_agent/http/`](../agents/src/mycobrain_agent/http/). FastAPI; one route module per section above; integration tests under `agents/tests/test_http_routes.py`.
+| Gateway router on **8120** | **8787** (same agent, different env)

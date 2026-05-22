@@ -47,7 +47,9 @@ async def _run(settings: Settings) -> None:
     registry = DeviceRegistry(adapter=adapter, settings=settings)
     serial_bridge = SerialBridge(adapter=adapter, registry=registry, settings=settings)
     mqtt = MqttClient(registry=registry, settings=settings)
-    openclaw = OpenClawClient(settings=settings)
+    # OpenClaw now sends MDP claw commands through the serial bridge (see
+    # docs/OPENCLAW_INTEGRATION_GUIDE_MAY19_2026.md for the May 21 reconciliation).
+    openclaw = OpenClawClient(settings=settings, serial_bridge=serial_bridge)
     heartbeat = HeartbeatService(registry=registry, settings=settings)
 
     services = [serial_bridge, mqtt, heartbeat]
@@ -101,15 +103,4 @@ async def _run(settings: Settings) -> None:
     for task in bg_tasks + list(pending):
         task.cancel()
     await asyncio.gather(*bg_tasks, return_exceptions=True)
-    await asyncio.gather(*pending, return_exceptions=True)
-    log.info("stopped")
-
-
-def main() -> None:
-    settings = Settings()
-    _configure_logging(settings)
-    asyncio.run(_run(settings))
-
-
-if __name__ == "__main__":
-    main()
+    await asyncio.gather(*pending, return_excepti

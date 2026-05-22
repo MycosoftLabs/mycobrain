@@ -1,159 +1,135 @@
-# OpenClaw Integration — NatureOS ↔ Agent ↔ OpenClaw
+# OpenClaw Integration — Reconciled With Actual Implementation
 
-**Date:** 2026-05-19
-**Status:** Canonical wiring for OpenClaw on every MycoBrain compute companion
+**Date:** 2026-05-19 (rev. 2026-05-21)
+**Status:** Reconciled with `claude/integrate-seeed-claw-SPwlV` branch on GitHub
 **Companion:** [`PLAN_UNIFIED_DEVICE_FLEET_MAY19_2026.md`](PLAN_UNIFIED_DEVICE_FLEET_MAY19_2026.md), [`PORT_8787_HTTP_API_SPEC_MAY19_2026.md`](PORT_8787_HTTP_API_SPEC_MAY19_2026.md)
 
-OpenClaw runs as a separate process on the same host as the agent (Jetson, Pi). It exposes its own local HTTP API at `http://127.0.0.1:8000`. The MycoBrain agent is the **only thing** that talks to OpenClaw — everything else goes through the agent. This keeps OpenClaw's API surface internal, lets us put NatureOS-issued JWT auth in front of every claw action, and gives us an audit trail per request.
+**REVISION (2026-05-21):** The original draft of this guide assumed OpenClaw was a REST service on `http://127.0.0.1:8000` with high-level actions like `grasp` / `move_to`. That was wrong. The actual implementation, on the open branch `claude/integrate-seeed-claw-SPwlV`, is:
+
+- OpenClaw is a **Node.js daemon** (`openclaw` npm package) running on the Jetson as systemd unit `mycobrain-openclaw.service`
+- It exposes a **WebSocket dashboard** at `ws://127.0.0.1:18789` (the `webchat` channel) — not a REST API
+- It talks to **Side B over `/dev/ttyTHS1` UART** using a **newline-delimited JSON** protocol that Side B's firmware translates to MDP COMMAND frames for Side A
+- Claw commands are **MDP IDs `0x0030`–`0x003F`** defined in `firmware/common/mdp_claw.h`
+- Actions are **simple verbs**: `claw_grip`, `claw_release`, `claw_position`, `claw_status` — not high-level `grasp`/`release`
+
+This document is now aligned with that reality. The agent's OpenClaw client (`agents/src/mycobrain_agent/openclaw/client.py`) has been rewritten to match.
 
 ---
 
 ## Sequence — claw action from NatureOS
 
 ```
-Operator (browser at mycosoft.com/natureos/devices/<id>)
+Operator (browser at mycosoft.com/natureos/devices)
    │
-   │  1. Click "Grasp" — JS sends POST /api/devices/<id>/openclaw/action
-   ▼
-NatureOS website (mycosoft.com)
-   │
-   │  2. Verify operator JWT, lookup device record, fetch agent URL
-   │  3. Issue per-action JWT (scope=openclaw:action, sub=<operator>)
-   │  4. POST <agent_url>/openclaw/action with Authorization: Bearer <jwt>
-   ▼
-mycobrain-agent on Jetson/Pi (port 8787)
-   │
-   │  5. Verify JWT, audit log "received", attach request_id
-   │  6. POST http://127.0.0.1:8000/grasp with X-API-Key: <local_key>
-   ▼
-OpenClaw process on same host (port 8000)
-   │
-   │  7. Execute physical action, return result
-   ▼
-mycobrain-agent
-   │
-   │  8. Audit log "completed" with result
-   │  9. Publish mycosoft/devices/<id>/openclaw/state to MQTT
-   │  10. Return result to NatureOS
+   │  1. POST /api/devices/<id>/openclaw/action
    ▼
 NatureOS website
    │
-   │  11. Update UI, push status to operator
+   │  2. Verify operator JWT, mint per-action JWT, proxy to agent
+   ▼
+mycobrain-agent on Jetson/Pi (port 8787)        ─ owns /dev/ttyTHS1 ─
+   │
+   │  3. Verify JWT, audit log, encode MDP COMMAND with id 0x0030+
+   │  4. Send MDP frame to Side A via Side B (the agent's serial bridge)
+   ▼
+Side B ESP32-S3 (UART relay)
+   │
+   │  5. Forwards COMMAND frame to Side A over UART2
+   ▼
+Side A ESP32-S3 (Sensor MCU)
+   │
+   │  6. Servo control via PCA9685 (or LEDC PWM on GPIO 13)
+   │  7. Reply with ACK + status (TELEMETRY frame on claw_status)
+   ▼
+mycobrain-agent
+   │
+   │  8. Publish openclaw/state to MQTT (retained)
+   │  9. Return to NatureOS
 ```
 
-Step 9 means **every other dashboard sees the claw move in real time** without polling the agent.
+The OpenClaw daemon (Node.js, port 18789) is **parallel**, not in series — its `mycobrain-control` skill calls the **same MDP claw commands** when invoked by voice/chat. The agent and the OpenClaw daemon are two front-doors into the same MDP rail. Coordination notes below.
 
 ---
 
-## Agent-side configuration
+## MDP Claw Command Family (from `firmware/common/mdp_claw.h`)
 
-The agent reads from env (file: `/etc/mycobrain/agent.env` on Linux, system env vars on Windows):
+| MDP ID | Command | Params | Side A response |
+|--------|---------|--------|-----------------|
+| `0x0030` | `claw_grip` | — | ACK, then EVENT with new position |
+| `0x0031` | `claw_release` | — | ACK |
+| `0x0032` | `claw_position` | `{"angle": 0–180}` | ACK |
+| `0x0033` | `claw_status` | — | TELEMETRY: `{position, is_closed, force_adc, mode, calibrated}` |
+| `0x0034` | `claw_calibrate` | (TBD) | ACK |
+| `0x0026` | `drone_latch_payload` | — | Alias for `claw_grip` (drone-context naming) |
+| `0x0027` | `drone_release_payload` | — | Alias for `claw_release` |
+
+These IDs sit in the `0x0030–0x003F` range reserved for claw control. They are sent as MDP COMMAND frames (msg_type `0x02`) targeted at `EP_SIDE_A` (`0xA1`). The agent serializes them like any other Side A command.
+
+---
+
+## Agent's HTTP API — action mapping
+
+The agent's canonical action vocabulary maps to MDP commands. Earlier this doc claimed a richer API; reality is simpler.
+
+| Agent action (`POST /openclaw/action`) | MDP command | Notes |
+|---------------------------------------|-------------|-------|
+| `grip` | `claw_grip` (0x0030) | renamed from `close` for clarity |
+| `release` | `claw_release` (0x0031) | renamed from `open` |
+| `position` | `claw_position` (0x0032) | params: `{angle}` |
+| `status` | `claw_status` (0x0033) | returns position + force_adc |
+| `calibrate` | `claw_calibrate` (0x0034) | when firmware finishes the calibration path |
+| `estop` | (existing) `estop` Side A command | Bypasses claw layer; trips ALL outputs |
+| `clear_estop` | `clear_estop` | |
+
+Removed from the earlier draft (since they don't exist in the firmware):
+
+- ~~`open`~~ — use `release`
+- ~~`close`~~ — use `grip`
+- ~~`home`~~ — not implemented; achieve via `position` with `angle: release_angle`
+- ~~`move_to`~~ — not implemented; positions are single-axis only on Nemo claw
+- ~~`grasp`~~ — would require force-feedback closed-loop; not in firmware yet
+
+The agent will return `405 Method Not Allowed` for any retired action with a hint pointing to the new name. This keeps NatureOS's older UI alive during the transition.
+
+---
+
+## Agent-side configuration (revised)
 
 ```bash
-# OpenClaw discovery
-OPENCLAW_ENABLED=true
-OPENCLAW_BASE_URL=http://127.0.0.1:8000
-OPENCLAW_API_KEY=<local_secret_known_only_to_agent_and_openclaw>
-OPENCLAW_TIMEOUT_MS=5000
+# OpenClaw daemon discovery — for awareness only; the agent doesn't need to call it
+OPENCLAW_DAEMON_WS=ws://127.0.0.1:18789
+OPENCLAW_PROBE_ENABLED=true   # if true, agent occasionally pings the daemon to surface its presence
 
-# How the agent surfaces it
-OPENCLAW_PROXY_PATH=/openclaw   # under :8787
+# Serial port ownership — agent is the canonical owner
+MYCOBRAIN_SIDE_A_PORT=/dev/ttyTHS1
+MYCOBRAIN_SIDE_B_PORT=/dev/ttyTHS2
 
 # Audit
 OPENCLAW_AUDIT_PATH=/var/log/mycobrain/openclaw_audit.jsonl
 ```
 
-If `OPENCLAW_ENABLED=false` or `OPENCLAW_BASE_URL` is unreachable on startup, the agent advertises `openclaw.available: false` and rejects `/openclaw/*` writes with HTTP 409.
+Removed (no longer applicable):
+- `OPENCLAW_BASE_URL=http://127.0.0.1:8000` — there is no HTTP service at that URL
+- `OPENCLAW_API_KEY` — OpenClaw daemon uses different auth (its own webchat tokens)
 
 ---
 
-## OpenClaw API mapping
+## Serial port arbitration
 
-The agent translates its own canonical action vocabulary to OpenClaw's local API. Default mapping (overridable per host in `agents/src/mycobrain_agent/openclaw/tasks.py`):
+Three potential consumers of `/dev/ttyTHS1` exist on a fully-equipped Jetson:
 
-| Agent action | OpenClaw call (assumed) | Notes |
-|--------------|------------------------|-------|
-| `open` | `POST /gripper/open` | |
-| `close` | `POST /gripper/close` body `{"force_n":...}` | Force defaults to OpenClaw safe value |
-| `home` | `POST /motion/home` | |
-| `move_to` | `POST /motion/move` body `{joints...}` | Joint names match the canonical schema |
-| `grasp` | `POST /tasks/grasp` body `{"force_n":...,"timeout_ms":...}` | High-level task; OpenClaw plans the motion |
-| `release` | `POST /tasks/release` | |
-| `calibrate` | `POST /maintenance/calibrate` body `{"mode":"quick"|"full"}` | |
-| `estop` | `POST /safety/estop` | Hardware-latched; requires `clear_estop` |
-| `clear_estop` | `POST /safety/clear_estop` | |
+1. `mycobrain-ondevice-operator.service` (Python, MAS repo) — original on-device operator
+2. `mycobrain-openclaw.service` (Node.js, this branch) — OpenClaw daemon
+3. `mycobrain-agent.service` (Python, `agents/` in this repo) — the new unified agent
 
-> **Open question for Garret:** confirm OpenClaw's real endpoint paths. If they differ, only `agents/src/mycobrain_agent/openclaw/client.py` changes — every other layer (NatureOS UI, agent API, MQTT) stays the same.
+**Only one can hold the port open at a time.** Recommended end-state:
 
----
+> **mycobrain-agent owns /dev/ttyTHS1.** Both the OpenClaw daemon (via its skill HTTP calls) and the legacy ondevice operator (deprecated, retired) should call the agent's `POST /command` endpoint instead of opening serial directly.
 
-## Audit log shape
+Transition plan:
 
-JSONL, one record per claw lifecycle event (`received` → `started` → `completed`/`failed`).
-
-```json
-{"id": 8422, "phase": "received", "ts": "2026-05-19T14:22:30Z", "device_id": "mycobrain-jet-a-001", "request_id": "natureos-7d34c0e1", "user_subject": "morgan@mycosoft.com", "action": "grasp", "params": {"force_n": 5.0, "timeout_ms": 4000}}
-{"id": 8422, "phase": "started",  "ts": "2026-05-19T14:22:30Z"}
-{"id": 8422, "phase": "completed","ts": "2026-05-19T14:22:32Z", "result": {...}}
-```
-
-The same record IDs are surfaced through `GET /status` (`audit_tail_id`) so the UI can deep-link into the audit panel.
-
----
-
-## Safety policies enforced in the agent
-
-1. **No claw action without auth** — even on LAN, claw writes always require JWT or pair token.
-2. **Estop dominates** — if Side A or OpenClaw emits an estop event, all subsequent `/openclaw/action` requests return 423 Locked until `clear_estop` is called.
-3. **Single-flight** — the agent serializes claw actions per device; concurrent requests get 429.
-4. **Rate limit** — defaults: 5 actions per 10s burst, 60 actions per 5 min sustained. Configurable.
-5. **Recording on by default** — every action is in the audit log. There is no "off the record" mode.
-
----
-
-## NatureOS UI contract
-
-The `/natureos/devices/<id>` page renders an OpenClaw panel iff `info.openclaw.available === true`. Panel contents:
-
-- Live position readout (from `mycosoft/devices/<id>/openclaw/state` MQTT subscription)
-- Quick-action buttons: Home / Open / Close / Grasp / Release / Estop
-- Calibration drawer
-- Joint sliders (when joint control mode is on)
-- Recent actions list (calls `GET /api/devices/<id>/openclaw/audit?limit=50`)
-- Estop toast banner (red) when latched
-
-UI spec lives in [`../natureos/openclaw-ui.md`](../natureos/openclaw-ui.md).
-
----
-
-## Standalone devices without OpenClaw
-
-Device #4 (the legacy bench MycoBrain) has no claw. The agent reports `openclaw.available: false`. NatureOS hides the panel. No code path is exercised. Nothing to do.
-
----
-
-## How to verify end-to-end
-
-Once the agent is running on a Jetson/Pi with OpenClaw on the same host:
-
-```bash
-# 1. Confirm OpenClaw is up locally
-curl -s http://127.0.0.1:8000/healthz
-
-# 2. Confirm agent sees it
-curl -s http://localhost:8787/openclaw/status | jq
-
-# 3. Issue a benign action (home — never moves into anything)
-curl -s -X POST http://localhost:8787/openclaw/action \
-  -H "Authorization: Bearer $JWT" \
-  -H "Content-Type: application/json" \
-  -d '{"action":"home","params":{},"request_id":"manual-1","user_subject":"morgan@mycosoft.com"}' | jq
-
-# 4. Tail audit
-tail -f /var/log/mycobrain/openclaw_audit.jsonl
-
-# 5. Confirm MQTT received the state update
-mosquitto_sub -h <broker> -u mycobrain -P <pw> -t 'mycosoft/devices/+/openclaw/state' -v
-```
-
-A clean run touches all five layers in this list.
+| Phase | What's running | Serial owner |
+|-------|----------------|--------------|
+| Today (pre-merge) | `mycobrain-ondevice-operator.service` | ondevice-operator |
+| Phase 2 | Add `mycobrain-openclaw.service` from claude/integrate-seeed-claw branch | **conflict** — OpenClaw and ondevice-operator both try to hold the port; need to disable one |
+| Phase 3 | Add `mycobrain-ag

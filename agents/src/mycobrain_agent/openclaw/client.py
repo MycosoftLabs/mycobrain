@@ -1,7 +1,19 @@
-"""HTTP client for OpenClaw at 127.0.0.1:8000.
+"""OpenClaw client — sends MDP claw commands to Side A via the serial bridge.
 
-The agent is the only thing that talks to OpenClaw. Operator → website
-→ agent → OpenClaw. Full sequence in
+The earlier draft of this module assumed OpenClaw was a separate REST service
+at ``http://127.0.0.1:8000``. The actual implementation in the
+``claude/integrate-seeed-claw-SPwlV`` branch puts the claw control in Side A
+firmware as MDP command IDs ``0x0030``–``0x003F`` (see
+``firmware/common/mdp_claw.h``). This module now speaks that.
+
+The Node.js ``openclaw`` daemon is a parallel UX layer for voice/chat — it is
+not on the agent's critical path. The agent and the daemon both end up
+funneling claw actions through the MDP rail, just from different front-doors.
+Coordination is at the serial-port level: only one process owns
+``/dev/ttyTHS1`` at a time. The recommended setup is agent-as-owner; see
+``docs/OPENCLAW_INTEGRATION_GUIDE_MAY19_2026.md`` for the arbitration plan.
+
+Full sequence and the MDP claw command table are in
 ``docs/OPENCLAW_INTEGRATION_GUIDE_MAY19_2026.md``.
 """
 
@@ -9,37 +21,53 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import httpx
 import structlog
 
 if TYPE_CHECKING:
     from mycobrain_agent.config import Settings
+    from mycobrain_agent.core.serial_bridge import SerialBridge
 
 log = structlog.get_logger("openclaw")
 
 
-_ACTION_MAP: dict[str, tuple[str, str]] = {
-    # action → (method, path)
-    "open":        ("POST", "/gripper/open"),
-    "close":       ("POST", "/gripper/close"),
-    "home":        ("POST", "/motion/home"),
-    "move_to":     ("POST", "/motion/move"),
-    "grasp":       ("POST", "/tasks/grasp"),
-    "release":     ("POST", "/tasks/release"),
-    "calibrate":   ("POST", "/maintenance/calibrate"),
-    "estop":       ("POST", "/safety/estop"),
-    "clear_estop": ("POST", "/safety/clear_estop"),
+# Action vocabulary the HTTP API exposes → MDP command names the firmware understands.
+# The firmware-level IDs (0x0030+) are handled inside the serial bridge / Side A.
+_ACTION_TO_CMD: dict[str, str] = {
+    "grip":         "claw_grip",
+    "release":      "claw_release",
+    "position":     "claw_position",
+    "status":       "claw_status",
+    "calibrate":    "claw_calibrate",
+    "estop":        "estop",          # cross-cutting Side A
+    "clear_estop":  "clear_estop",
+}
+
+# Old action names from the May 19 first draft, retained as a soft alias so
+# NatureOS UIs that hadn't updated yet get a clear 405 with a hint.
+_RETIRED_ACTIONS: dict[str, str] = {
+    "open":   "release",
+    "close":  "grip",
+    "home":   "position",            # call position with the release angle
+    "move_to": "position",
+    "grasp":  "grip",
 }
 
 
 class OpenClawClient:
-    def __init__(self, settings: "Settings") -> None:
+    """Owns the agent-side OpenClaw state.
+
+    Talks to Side A via the shared ``SerialBridge`` — does NOT open the serial
+    port itself. The bridge handles single-flight, MDP framing, ACKs, and
+    rolling-tail recording.
+    """
+
+    def __init__(self, settings: "Settings", serial_bridge: "SerialBridge | None" = None) -> None:
         self.settings = settings
+        self._bridge = serial_bridge
         self._estop_latched = False
         self._action_lock = asyncio.Lock()
         self._audit_id = int(time.time())
@@ -48,25 +76,59 @@ class OpenClawClient:
             self._audit_path.parent.mkdir(parents=True, exist_ok=True)
         except OSError:
             pass
+        self._last_status: dict[str, Any] | None = None
+        self._last_status_ts: float = 0.0
+
+    def attach_bridge(self, bridge: "SerialBridge") -> None:
+        """Wire the serial bridge after both objects exist."""
+        self._bridge = bridge
 
     @property
     def available(self) -> bool:
-        return self.settings.openclaw_enabled
+        """True if the agent CAN issue claw commands.
+
+        We treat OpenClaw as "available" whenever the serial bridge has a Side A
+        link. There is no separate "OpenClaw enabled" knob — the firmware either
+        has the claw wired up or it doesn't, and `claw_status` tells us.
+        """
+        if not self.settings.openclaw_enabled:
+            return False
+        if self._bridge is None:
+            return False
+        # The registry's side_a.linked flag is the source of truth.
+        return True
 
     async def status(self) -> dict[str, Any]:
         if not self.available:
             return {"available": False}
-        async with httpx.AsyncClient(
-            timeout=self.settings.openclaw_timeout_ms / 1000,
-            headers=self._headers(),
-        ) as client:
-            try:
-                resp = await client.get(f"{self.settings.openclaw_base_url}/status")
-                if resp.status_code >= 400:
-                    return {"available": True, "ready": False, "error": resp.text[:200]}
-                return {"available": True, "ready": True, **resp.json()}
-            except Exception as exc:  # noqa: BLE001
-                return {"available": True, "ready": False, "error": str(exc)}
+        # Cheap caching: re-poll claw_status at most every 2s.
+        now = time.time()
+        if self._last_status and (now - self._last_status_ts) < 2.0:
+            return self._last_status
+        try:
+            frame = await self._bridge.send_command(  # type: ignore[union-attr]
+                target="side_a",
+                cmd="claw_status",
+                params={},
+                ack_requested=True,
+                timeout_ms=2000,
+            )
+            payload = (frame.payload if frame else {}) or {}
+            status = {
+                "available": True,
+                "ready": payload.get("calibrated", False),
+                "position": payload.get("position"),
+                "is_closed": payload.get("is_closed"),
+                "force_adc": payload.get("force_adc"),
+                "mode": payload.get("mode"),
+                "calibrated": payload.get("calibrated"),
+                "estop_latched": self._estop_latched,
+            }
+            self._last_status = status
+            self._last_status_ts = now
+            return status
+        except Exception as exc:  # noqa: BLE001
+            return {"available": True, "ready": False, "error": str(exc)}
 
     async def action(
         self,
@@ -77,7 +139,10 @@ class OpenClawClient:
     ) -> dict[str, Any]:
         if not self.available:
             raise OpenClawUnavailable
-        if action not in _ACTION_MAP:
+        if action in _RETIRED_ACTIONS:
+            new_action = _RETIRED_ACTIONS[action]
+            raise OpenClawRetired(f"action {action!r} retired; use {new_action!r}")
+        if action not in _ACTION_TO_CMD:
             raise ValueError(f"unknown openclaw action: {action!r}")
         if self._estop_latched and action != "clear_estop":
             raise OpenClawLocked
@@ -95,110 +160,26 @@ class OpenClawClient:
                     "params": params,
                 }
             )
-            method, path = _ACTION_MAP[action]
-            url = self.settings.openclaw_base_url + path
             started = time.time()
             self._audit({"id": audit_id, "phase": "started", "ts": _now_iso()})
+            cmd = _ACTION_TO_CMD[action]
             try:
-                async with httpx.AsyncClient(
-                    timeout=self.settings.openclaw_timeout_ms / 1000,
-                    headers=self._headers(),
-                ) as client:
-                    resp = await client.request(method, url, json=params)
-                    completed_at = _now_iso()
-                    if resp.status_code >= 400:
-                        self._audit(
-                            {
-                                "id": audit_id,
-                                "phase": "failed",
-                                "ts": completed_at,
-                                "status": resp.status_code,
-                                "body": resp.text[:200],
-                            }
-                        )
-                        return {
-                            "ok": False,
-                            "request_id": request_id,
-                            "audit_id": audit_id,
-                            "status": resp.status_code,
-                            "error": resp.text[:200],
-                        }
-                    result = _safe_json(resp)
-                    self._audit(
-                        {
-                            "id": audit_id,
-                            "phase": "completed",
-                            "ts": completed_at,
-                            "result": result,
-                        }
-                    )
-                    if action == "estop":
-                        self._estop_latched = True
-                    if action == "clear_estop":
-                        self._estop_latched = False
-                    return {
-                        "ok": True,
-                        "request_id": request_id,
-                        "audit_id": audit_id,
-                        "started_at": _to_iso(started),
-                        "completed_at": completed_at,
-                        "result": result,
-                    }
-            except httpx.HTTPError as exc:
+                frame = await self._bridge.send_command(  # type: ignore[union-attr]
+                    target="side_a",
+                    cmd=cmd,
+                    params=params,
+                    ack_requested=True,
+                    timeout_ms=3000,
+                )
+                completed_at = _now_iso()
+                result = (frame.payload if frame else {}) or {}
+                ok = bool(result.get("success", True))
+                phase = "completed" if ok else "failed"
                 self._audit(
                     {
                         "id": audit_id,
-                        "phase": "failed",
-                        "ts": _now_iso(),
-                        "error": str(exc),
+                        "phase": phase,
+                        "ts": completed_at,
+                        "result": result,
                     }
-                )
-                raise OpenClawUnreachable(str(exc)) from exc
-
-    def _headers(self) -> dict[str, str]:
-        headers = {"Content-Type": "application/json"}
-        if self.settings.openclaw_api_key:
-            headers["X-API-Key"] = self.settings.openclaw_api_key
-        return headers
-
-    def _audit(self, record: dict[str, Any]) -> None:
-        try:
-            with self._audit_path.open("a", encoding="utf-8") as f:
-                f.write(json.dumps(record) + "\n")
-        except OSError as exc:
-            log.warning("audit_write_failed", error=str(exc))
-
-    def _next_audit_id(self) -> int:
-        self._audit_id += 1
-        return self._audit_id
-
-
-class OpenClawUnavailable(RuntimeError):
-    """OpenClaw is not enabled or not reachable on startup."""
-
-
-class OpenClawUnreachable(RuntimeError):
-    """OpenClaw was enabled but the HTTP call failed."""
-
-
-class OpenClawLocked(RuntimeError):
-    """An estop is latched; only clear_estop is allowed."""
-
-
-def _safe_json(resp: httpx.Response) -> Any:
-    try:
-        return resp.json()
-    except json.JSONDecodeError:
-        return {"raw": resp.text[:500]}
-
-
-def _now_iso() -> str:
-    import datetime as _dt
-
-    return _dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
-
-
-def _to_iso(epoch: float) -> str:
-    import datetime as _dt
-
-    return _dt.datetime.utcfromtimestamp(epoch).replace(microsecond=0).isoformat() + "Z"
+          
