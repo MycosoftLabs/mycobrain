@@ -1,0 +1,8 @@
+{
+  "_note": "Inherit from production Mushroom 1 calibration. Update after first probe via :8787/command target=side_a cmd=calibration.",
+  "analog_offset": [0.0, 0.0, 0.0, 0.0],
+  "analog_gain": [1.0, 1.0, 1.0, 1.0],
+  "adc_reference": 3.3,
+  "bme_temp_offset": 0.0,
+  "bme_humidity_offset": 0.0
+}

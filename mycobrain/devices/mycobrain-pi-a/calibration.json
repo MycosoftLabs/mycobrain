@@ -1,0 +1,8 @@
+{
+  "_note": "Hyphae1 has soil moisture ADC — include soil offset/gain when first calibrated.",
+  "analog_offset": [0.0, 0.0, 0.0, 0.0],
+  "analog_gain": [1.0, 1.0, 1.0, 1.0],
+  "soil_moisture_offset": 0,
+  "soil_moisture_gain": 1.0,
+  "adc_reference": 3.3
+}
