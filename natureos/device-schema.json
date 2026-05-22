@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mycosoft.com/schemas/device.json",
+  "title": "MycoBrain Device",
+  "description": "Canonical device record. Source of truth for /natureos/devices, MAS, MINDEX, MQTT presence.",
+  "type": "object",
+  "required": ["device_id", "host_kind", "online"],
+  "properties": {
+    "device_id": {
+      "type": "string",
+      "description": "Canonical id, always derived from Side A identity.",
+      "pattern": "^mycobrain-[a-z0-9_-]+$"
+    },
+    "nickname": { "type": "string" },
+    "host_kind": {
+      "type": "string",
+      "enum": ["jetson_orin", "jetson_legacy", "raspberry_pi", "standalone"]
+    },
+    "host_model": { "type": "string" },
+    "host_ip": { "type": "string", "format": "ipv4" },
+    "agent_url": { "type": "string", "format": "uri" },
+    "agent_version": { "type": "string" },
+    "online": { "type": "boolean" },
+    "last_seen": { "type": "string", "format": "date-time" },
+    "location": { "type": "string" },
+    "side_a": {
+      "type": "object",
+      "properties": {
+        "linked": { "type": "boolean" },
+        "fw_version": { "type": "string" },
+        "role": { "type": "string", "enum": ["mushroom1", "hyphae1", "unknown"] },
+        "last_seen_ms_ago": { "type": ["integer", "null"] }
+      }
+    },
+    "side_b": {
+      "type": "object",
+      "properties": {
+        "linked": { "type": "boolean" },
+        "fw_version": { "type": "string" },
+        "transports": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["lora", "ble", "wifi", "sim"] }
+        }
+      }
+    },
+    "openclaw": {
+      "type": "object",
+      "properties": {
+        "available": { "type": "boolean" },
+        "ready": { "type": "boolean" },
+        "calibrated": { "type": "boolean" },
+        "model": { "type": "string" },
+        "holding": { "type": "boolean" }
+      },
+      "required": ["available"]
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "cuda",
+          "mdp_command",
+          "openclaw_control",
+          "tac_o_inference",
+          "telemetry_stream",
+          "frame_tail",
+          "gpio_control",
+          "legacy_json_bridge",
+          "gateway_router"
+        ]
+      }
+    },
+    "paired_to": { "type": "string" },
+    "paired_at": { "type": "string", "format": "date-time" }
+  }
+}
