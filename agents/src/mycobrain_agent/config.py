@@ -48,22 +48,16 @@ class Settings(BaseSettings):
     mqtt_client_id: str | None = None  # default: f"mycobrain-{adapter}-{nickname}"
 
     # --- OpenClaw ---
+    # The OpenClaw daemon (Node.js, ws://127.0.0.1:18789) is a parallel UX layer
+    # — the agent does NOT proxy through it. Claw control is via MDP commands
+    # sent through the serial bridge to Side A. See
+    # docs/OPENCLAW_INTEGRATION_GUIDE_MAY19_2026.md for the full picture.
     openclaw_enabled: bool = True
-    openclaw_base_url: str = "http://127.0.0.1:8000"
-    openclaw_api_key: str | None = None
+    openclaw_daemon_ws: str = "ws://127.0.0.1:18789"  # presence probe only
     openclaw_timeout_ms: int = 5000
     openclaw_audit_path: str = "/var/log/mycobrain/openclaw_audit.jsonl"
+    # Retired May 21 (kept as comment for any deployment that still reads them):
+    # openclaw_base_url: str = "http://127.0.0.1:8000"  -- there is no HTTP service there
+    # openclaw_api_key: str | None = None                -- no key needed; serial is local
 
-    # --- Upstream ---
-    mas_heartbeat_url: str = "https://mycosoft.com/api/devices/heartbeat"
-    mindex_telemetry_url: str = "https://mindex.mycosoft.com/api/fci/telemetry"
-    nlm_translate_url: str = "https://mycosoft.com/api/translate"
-
-    # --- Observability ---
-    log_level: str = "INFO"
-    audit_path: str = "/var/log/mycobrain/agent_audit.jsonl"
-
-    # --- Resolved values ---
-    @property
-    def resolved_mqtt_client_id(self) -> str:
-        return self.mqtt_client_id or f"mycobrain-{self.adapter}-{self.device_nickname}"
+    # ---
