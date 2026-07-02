@@ -1,21 +1,37 @@
-MIT License
+PROPRIETARY SOFTWARE LICENSE
 
-Copyright (c) 2024 Mycosoft Labs
+Copyright (c) 2022-2026 Mycosoft, Inc. All Rights Reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This software, including all source code, object code, documentation, designs,
+schematics, data, models, weights, and associated materials (collectively, the
+"Software"), is the proprietary and confidential property of Mycosoft, Inc.
+("Mycosoft") and is protected by United States and international copyright,
+trade secret, and other intellectual property laws.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+NO LICENSE GRANTED. No license, right, or permission -- whether express,
+implied, by estoppel, or otherwise -- is granted to any person or entity to
+use, access, copy, reproduce, modify, adapt, translate, merge, publish,
+distribute, sublicense, sell, create derivative works from, reverse engineer,
+decompile, disassemble, or otherwise exploit the Software, in whole or in part,
+without the prior written authorization of Mycosoft, executed by a duly
+authorized officer of Mycosoft.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+CONFIDENTIALITY. The Software constitutes the confidential information and
+trade secrets of Mycosoft. Any access to the Software transfers no ownership
+interest whatsoever and imposes an obligation to maintain its confidentiality.
+
+NO WARRANTY. The Software is provided "AS IS," without warranty of any kind,
+express or implied.
+
+EXPORT CONTROL. The Software may be subject to United States export control
+laws and regulations, including the Export Administration Regulations (EAR,
+15 C.F.R. Parts 730-774) and potentially the International Traffic in Arms
+Regulations (ITAR, 22 C.F.R. Parts 120-130). The Software may not be exported,
+re-exported, released, or disclosed to any foreign person or destination except
+in full compliance with such laws. Unauthorized export is strictly prohibited.
+
+ENFORCEMENT. Unauthorized use, reproduction, or distribution of the Software,
+or any portion thereof, may result in severe civil and criminal penalties and
+will be prosecuted to the maximum extent possible under law.
+
+CONTACT. All licensing and authorization inquiries: legal@mycosoft.org
