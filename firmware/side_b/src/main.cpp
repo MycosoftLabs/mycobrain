@@ -251,7 +251,7 @@ static bool bleOldDeviceConnected = false;
 static uint8_t bleRxBuffer[cfg::MAX_PAYLOAD];
 static volatile size_t bleRxLen = 0;
 
-class BLEServerCallbacks : public BLEServerCallbacks {
+class MycoBrainBleServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer* pServer) override {
     bleDeviceConnected = true;
     Serial.println("{\"ble\":\"connected\"}");
@@ -276,7 +276,7 @@ class BLERxCallbacks : public BLECharacteristicCallbacks {
 static bool bleInit() {
   BLEDevice::init(BLE_DEVICE_NAME);
   bleServer = BLEDevice::createServer();
-  bleServer->setCallbacks(new BLEServerCallbacks());
+  bleServer->setCallbacks(new MycoBrainBleServerCallbacks());
   
   BLEService* pService = bleServer->createService(BLE_SERVICE_UUID);
   
