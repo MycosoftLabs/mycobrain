@@ -1,5 +1,7 @@
 # MycoBrain - Environmental IoT Sensor Platform
 
+
+> **Proprietary — Mycosoft, Inc.** Authorized use only. See [LICENSE](./LICENSE) and [NOTICE](./NOTICE). U.S. defense/government and export-control terms may apply.
 > **Version**: 2.1.0
 > **Last Updated**: 2026-05-19
 >
@@ -200,3 +202,26 @@ See [firmware/README.md](firmware/README.md) for full procedure.
 ## 📜 License
 
 Copyright © 2026 Mycosoft. All rights reserved.
+
+---
+
+## License and export control
+
+**Proprietary — Mycosoft, Inc. All Rights Reserved.**
+
+This repository is proprietary software. No use, copy, modification, distribution,
+or disclosure is permitted without **prior written authorization** from Mycosoft, Inc.
+
+- See [LICENSE](./LICENSE) and [NOTICE](./NOTICE) in this repository.
+- Portions may relate to U.S. defense, government, marine, acoustic, or environmental
+  sensing use cases subject to applicable law, including **EAR** and potentially **ITAR**
+  export controls. This repository is **not** marked as ITAR-classified unless explicitly
+  labeled elsewhere.
+- Mycosoft aligns engineering and security practices with **NIST** cybersecurity
+  frameworks and **CMMC**-oriented controls at the organizational level; no certification
+  is claimed by presence of this notice alone.
+- U.S. Department of Defense and government use is subject to applicable federal law
+  and contract terms.
+
+**Contact:** legal@mycosoft.org
+
