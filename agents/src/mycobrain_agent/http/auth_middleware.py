@@ -38,9 +38,7 @@ async def require_auth(
 
 async def _verify_jwt(token: str, settings: Any) -> None:
     if not settings.natureos_jwks_url:
-        # Dev fallback: unverified decode just to fail loudly on tampering
-        jwt.decode(token, options={"verify_signature": False})
-        return
+        raise jwt.InvalidKeyError("jwks_not_configured")
     async with httpx.AsyncClient(timeout=5.0) as client:
         resp = await client.get(settings.natureos_jwks_url)
         jwks = resp.json()
