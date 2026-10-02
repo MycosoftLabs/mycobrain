@@ -1,0 +1,43 @@
+{
+  "status": "WIP",
+  "deployment": false,
+  "repository": "C:\\Users\\Owner1\\.codex\\worktrees\\system-audit-repairs\\CODE\\mycobrain-auth-repair",
+  "sourceBranch": "codex/mycobrain-auth-audit",
+  "checkpointBranch": "codex/checkpoint-mycobrain-auth-repair-oct01-2026",
+  "currentBase": "4867dd95e6a8459d1603ff068c98ef2f0b0cdcf7",
+  "scope": {
+    "sourceDeltaCount": 3,
+    "sourceDelta": [
+      {
+        "path": "agents/src/mycobrain_agent/http/auth_middleware.py",
+        "operation": "write",
+        "bytes": 1979,
+        "sha256": "425302516a5c9341d81a0145d7d085cf6ba02c580606c745d83993103b0ba19b"
+      },
+      {
+        "path": "agents/tests/test_auth_middleware.py",
+        "operation": "write",
+        "bytes": 4562,
+        "sha256": "a0b308e4162fec5ded8d78cb1bf888d1957369acd0faa8e5a752013269e286a3"
+      },
+      {
+        "path": "docs/MYCOBRAIN_AUTH_AUDIT_REPAIR_SEP29_2026.md",
+        "operation": "write",
+        "bytes": 5198,
+        "sha256": "0c0815222f88d42915684f4ddefc0684951370b827b4f65345e6918fd496293d"
+      }
+    ],
+    "overlay": [
+      "docs/checkpoints/oct01-2026/README.md",
+      "docs/checkpoints/oct01-2026/source-manifest.json"
+    ]
+  },
+  "excludedPaths": [],
+  "reviewFlags": [],
+  "validation": {
+    "tests": "not run",
+    "integration": "incomplete",
+    "releaseQualification": "incomplete"
+  },
+  "purpose": "local source preservation checkpoint only; no merge, publication, or deployment"
+}
