@@ -1,0 +1,49 @@
+{
+  "status": "WIP",
+  "deployment": false,
+  "repository": "C:\\Users\\Owner1\\.codex\\worktrees\\system-audit-repairs\\CODE\\mycobrain-release",
+  "sourceBranch": "codex/agent-entrypoint-recovery",
+  "checkpointBranch": "codex/checkpoint-mycobrain-release-oct01-2026",
+  "currentBase": "00acfc7a86bfe2ae46f743c5bf42a7003377ce44",
+  "scope": {
+    "sourceDeltaCount": 4,
+    "sourceDelta": [
+      {
+        "path": "agents/src/mycobrain_agent/__main__.py",
+        "operation": "write",
+        "bytes": 4062,
+        "sha256": "c1f1eba35f9620049beb4f8b29985ae6481da11daac8bb458239c758802715f8"
+      },
+      {
+        "path": "agents/src/mycobrain_agent/openclaw/client.py",
+        "operation": "write",
+        "bytes": 9780,
+        "sha256": "a1a34102c82544a6b9e151c44522fe9b3fea61466e95449fbac92b0aa7ab9aed"
+      },
+      {
+        "path": "agents/tests/test_entrypoint_openclaw_recovery.py",
+        "operation": "write",
+        "bytes": 11178,
+        "sha256": "1a52c476bf714da438125e75e89a7ff7c98e424ede35799cdf48ca85e6e6b436"
+      },
+      {
+        "path": "docs/AGENT_ENTRYPOINT_RECOVERY_SEP30_2026.md",
+        "operation": "write",
+        "bytes": 5242,
+        "sha256": "9c5542645040f07b8b626e091bbb43af22a62ee25fc74f6d7a19deb2b35584e9"
+      }
+    ],
+    "overlay": [
+      "docs/checkpoints/oct01-2026/README.md",
+      "docs/checkpoints/oct01-2026/source-manifest.json"
+    ]
+  },
+  "excludedPaths": [],
+  "reviewFlags": [],
+  "validation": {
+    "tests": "not run",
+    "integration": "incomplete",
+    "releaseQualification": "incomplete"
+  },
+  "purpose": "local source preservation checkpoint only; no merge, publication, or deployment"
+}

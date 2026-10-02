@@ -47,9 +47,9 @@ async def _run(settings: Settings) -> None:
     registry = DeviceRegistry(adapter=adapter, settings=settings)
     serial_bridge = SerialBridge(adapter=adapter, registry=registry, settings=settings)
     mqtt = MqttClient(registry=registry, settings=settings)
-    # OpenClaw now sends MDP claw commands through the serial bridge (see
-    # docs/OPENCLAW_INTEGRATION_GUIDE_MAY19_2026.md for the May 21 reconciliation).
-    openclaw = OpenClawClient(settings=settings, serial_bridge=serial_bridge)
+    # Keep physical claw dispatch unbound until identity, authorization,
+    # firmware schema and failsafes are qualified in a separate integration.
+    openclaw = OpenClawClient(settings=settings)
     heartbeat = HeartbeatService(registry=registry, settings=settings)
 
     services = [serial_bridge, mqtt, heartbeat]
@@ -93,14 +93,27 @@ async def _run(settings: Settings) -> None:
     # Run HTTP server until stop_event or server completes
     server_task = asyncio.create_task(server.serve(), name="uvicorn")
 
-    done, pending = await asyncio.wait(
-        [server_task, asyncio.create_task(stop_event.wait())],
-        return_when=asyncio.FIRST_COMPLETED,
-    )
+    stop_task = asyncio.create_task(stop_event.wait(), name="shutdown-wait")
+    tasks = [*bg_tasks, server_task, stop_task]
+    try:
+        await asyncio.wait([server_task, stop_task], return_when=asyncio.FIRST_COMPLETED)
+    finally:
+        log.info("stopping")
+        server.should_exit = True
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        log.info("stopped")
+    if not server_task.cancelled():
+        server_task.result()  # A failed server must not look like a clean exit.
 
-    log.info("stopping")
-    server.should_exit = True
-    for task in bg_tasks + list(pending):
-        task.cancel()
-    await asyncio.gather(*bg_tasks, return_exceptions=True)
-    await asyncio.gather(*pending, return_excepti
+
+def main() -> None:
+    settings = Settings()
+    _configure_logging(settings)
+    asyncio.run(_run(settings))
+
+
+if __name__ == "__main__":
+    main()

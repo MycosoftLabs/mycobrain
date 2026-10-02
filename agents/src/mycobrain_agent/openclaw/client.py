@@ -85,18 +85,13 @@ class OpenClawClient:
 
     @property
     def available(self) -> bool:
-        """True if the agent CAN issue claw commands.
-
-        We treat OpenClaw as "available" whenever the serial bridge has a Side A
-        link. There is no separate "OpenClaw enabled" knob — the firmware either
-        has the claw wired up or it doesn't, and `claw_status` tells us.
-        """
+        """Explicit binding/link presence only, not trusted device qualification."""
         if not self.settings.openclaw_enabled:
             return False
         if self._bridge is None:
             return False
-        # The registry's side_a.linked flag is the source of truth.
-        return True
+        record = getattr(getattr(self._bridge, "registry", None), "record", None)
+        return getattr(getattr(record, "side_a", None), "linked", False) is True
 
     async def status(self) -> dict[str, Any]:
         if not self.available:
@@ -113,10 +108,13 @@ class OpenClawClient:
                 ack_requested=True,
                 timeout_ms=2000,
             )
-            payload = (frame.payload if frame else {}) or {}
+            payload = getattr(frame, "payload", None)
+            if not isinstance(payload, dict):
+                return {"available": True, "ready": False, "error": "invalid_status_reply"}
             status = {
                 "available": True,
-                "ready": payload.get("calibrated", False),
+                "ready": payload.get("calibrated") is True,
+                "evidence": "source_reported_unverified",
                 "position": payload.get("position"),
                 "is_closed": payload.get("is_closed"),
                 "force_adc": payload.get("force_adc"),
@@ -127,8 +125,8 @@ class OpenClawClient:
             self._last_status = status
             self._last_status_ts = now
             return status
-        except Exception as exc:  # noqa: BLE001
-            return {"available": True, "ready": False, "error": str(exc)}
+        except Exception:  # noqa: BLE001
+            return {"available": True, "ready": False, "error": "status_unavailable"}
 
     async def action(
         self,
@@ -144,10 +142,15 @@ class OpenClawClient:
             raise OpenClawRetired(f"action {action!r} retired; use {new_action!r}")
         if action not in _ACTION_TO_CMD:
             raise ValueError(f"unknown openclaw action: {action!r}")
-        if self._estop_latched and action != "clear_estop":
-            raise OpenClawLocked
+        if not isinstance(params, dict):
+            raise ValueError("openclaw params must be an object")
 
         async with self._action_lock:
+            # State may change while this request waits for a prior action.
+            if not self.available:
+                raise OpenClawUnavailable
+            if self._estop_latched and action != "clear_estop":
+                raise OpenClawLocked
             audit_id = self._next_audit_id()
             self._audit(
                 {
@@ -172,9 +175,10 @@ class OpenClawClient:
                     timeout_ms=3000,
                 )
                 completed_at = _now_iso()
-                result = (frame.payload if frame else {}) or {}
-                ok = bool(result.get("success", True))
-                phase = "completed" if ok else "failed"
+                payload = getattr(frame, "payload", None)
+                result = payload if isinstance(payload, dict) else {}
+                ok = result.get("success") is True
+                phase = "acknowledged" if ok else "failed"
                 self._audit(
                     {
                         "id": audit_id,
@@ -182,4 +186,62 @@ class OpenClawClient:
                         "ts": completed_at,
                         "result": result,
                     }
-          
+                )
+                if ok and action == "estop":
+                    self._estop_latched = True
+                elif ok and action == "clear_estop":
+                    self._estop_latched = False
+                return {
+                    "ok": ok,
+                    "request_id": request_id,
+                    "audit_id": audit_id,
+                    "started_at": _to_iso(started),
+                    "completed_at": completed_at,
+                    "result": result,
+                    "evidence": "device_acknowledgement_unverified" if ok else "no_positive_acknowledgement",
+                }
+            except OpenClawUnreachable:
+                raise
+            except Exception as exc:  # noqa: BLE001
+                self._audit({"id": audit_id, "phase": "failed", "ts": _now_iso(),
+                             "error": "command_unavailable"})
+                raise OpenClawUnreachable("command_unavailable") from exc
+
+    def _audit(self, record: dict[str, Any]) -> None:
+        try:
+            with self._audit_path.open("a", encoding="utf-8") as stream:
+                stream.write(json.dumps(record) + "\n")
+                stream.flush()
+        except (OSError, TypeError, ValueError) as exc:
+            # In particular, receipt/started audit failure must prevent dispatch.
+            raise OpenClawUnreachable("audit_unavailable") from exc
+
+    def _next_audit_id(self) -> int:
+        self._audit_id += 1
+        return self._audit_id
+
+
+class OpenClawUnavailable(RuntimeError):
+    """No enabled and explicitly bound transport link is available."""
+
+
+class OpenClawUnreachable(RuntimeError):
+    """Command or required audit recording is unavailable."""
+
+
+class OpenClawLocked(RuntimeError):
+    """A local estop latch blocks actions other than clear_estop."""
+
+
+class OpenClawRetired(ValueError):
+    """A retired command name must not dispatch to hardware."""
+
+
+def _now_iso() -> str:
+    return _to_iso(time.time())
+
+
+def _to_iso(epoch: float) -> str:
+    from datetime import datetime, timezone
+
+    return datetime.fromtimestamp(epoch, timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
