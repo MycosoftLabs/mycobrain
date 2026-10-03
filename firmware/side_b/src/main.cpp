@@ -11,6 +11,15 @@
 #ifndef ENABLE_BLE
 #define ENABLE_BLE 0
 #endif
+#ifndef ENABLE_CLOUD_MQTT
+#define ENABLE_CLOUD_MQTT 0
+#endif
+#if ENABLE_CLOUD_MQTT && !ENABLE_WIFI
+#error "ENABLE_CLOUD_MQTT requires ENABLE_WIFI=1"
+#endif
+#ifndef MYCOBRAIN_FW_VERSION
+#define MYCOBRAIN_FW_VERSION "side-b-dev"
+#endif
 
 #if ENABLE_LORA
 #include <RadioLib.h>
@@ -27,6 +36,10 @@
 #include <BLEUtils.h>
 #include <BLEServer.h>
 #include <BLE2902.h>
+#endif
+
+#if ENABLE_CLOUD_MQTT
+#include <mycobrain_cloud.h>
 #endif
 
 #include <mdp_types.h>
@@ -472,6 +485,12 @@ static void handleFromA(const uint8_t* p, uint16_t len) {
   if (h->seq == last_inorder_a + 1) last_inorder_a = h->seq;
   if (h->flags & ACK_REQUESTED) sendAckToA(false);
 
+#if ENABLE_CLOUD_MQTT
+  if (h->msg_type == MDP_TELEMETRY || h->msg_type == MDP_EVENT) {
+    (void)mycocloud::publishMdp(p, len);
+  }
+#endif
+
   // Forward telemetry reliably (LoRa can be lossy; this enables replay/ack).
   if (h->msg_type == MDP_TELEMETRY) {
     uint8_t out[cfg::MAX_PAYLOAD];
@@ -556,6 +575,45 @@ static void handleFromGW(const uint8_t* p, uint16_t len) {
   }
 }
 
+#if ENABLE_CLOUD_MQTT
+// Commands from AWS IoT Core -> forward reliably to Side-A.
+static void handleFromCloud(const uint8_t* p, uint16_t len) {
+  if (len < sizeof(mdp_hdr_v1_t) || len > cfg::MAX_PAYLOAD) return;
+  auto* h = (const mdp_hdr_v1_t*)p;
+  if (h->magic != MDP_MAGIC || h->version != MDP_VER || h->msg_type != MDP_COMMAND) return;
+
+  uint8_t out[cfg::MAX_PAYLOAD];
+  memcpy(out, p, len);
+  auto* oh = (mdp_hdr_v1_t*)out;
+  oh->src = EP_SIDE_B;
+  oh->dst = EP_SIDE_A;
+  oh->seq = b_tx_seq++;
+  oh->ack = last_inorder_a;
+  oh->flags |= ACK_REQUESTED;
+
+  txEnqueue(false, out, len, oh->seq, cfg::UART_RTO_MS);
+  uartSendMdp(out, len);
+}
+
+static char usbLine[160];
+static size_t usbLineLen = 0;
+
+static void usbPoll() {
+  while (Serial.available()) {
+    char c = (char)Serial.read();
+    if (c == '\r') continue;
+    if (c == '\n') {
+      usbLine[usbLineLen] = 0;
+      if (usbLineLen) (void)mycocloud::handleSerialLine(usbLine);
+      usbLineLen = 0;
+      continue;
+    }
+    if (usbLineLen < sizeof(usbLine) - 1) usbLine[usbLineLen++] = c;
+    else usbLineLen = 0;
+  }
+}
+#endif
+
 #if ENABLE_LORA
 static void loraPoll() {
   if (!loraReady) return;
@@ -596,6 +654,10 @@ void setup() {
   (void)bleInit();
 #endif
 
+#if ENABLE_CLOUD_MQTT
+  (void)mycocloud::begin(handleFromCloud, MYCOBRAIN_FW_VERSION);
+#endif
+
   // Status message with enabled modules
   Serial.print("{\"side\":\"B\",\"mdp\":1");
 #if ENABLE_LORA
@@ -631,6 +693,11 @@ void loop() {
 
 #if ENABLE_BLE
   blePoll();
+#endif
+
+#if ENABLE_CLOUD_MQTT
+  usbPoll();
+  mycocloud::loop(now);
 #endif
 
   // Reliability queue pump
