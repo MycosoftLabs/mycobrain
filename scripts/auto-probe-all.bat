@@ -10,7 +10,7 @@ setlocal
 cd /d "%~dp0.."
 set "MYCOBRAIN_COM_PORT=COM4"
 set "MYCOBRAIN_JETSON_USER=jetson"
-set "MYCOBRAIN_JETSON_PASSWORD=Loserology1!"
+if not defined MYCOBRAIN_JETSON_PASSWORD set "MYCOBRAIN_JETSON_PASSWORD=%JETSON_SSH_PASSWORD%"
 
 echo === MycoBrain auto-probe starting ===
 echo Repo: %CD%
