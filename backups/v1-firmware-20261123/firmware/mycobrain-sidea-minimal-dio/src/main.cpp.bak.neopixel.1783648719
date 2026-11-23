@@ -1,0 +1,676 @@
+/*
+ * MycoBrain Recovery Operator Firmware v0.7
+ * BSEC2 dual BME688, full telemetry output
+ * Ported from MDP production firmware (Garret Morgio / BSEC2 integration)
+ */
+#include <Arduino.h>
+#include <Wire.h>
+#include "bsec2.h"
+#include "bsec_selectivity.h"
+
+static const uint8_t* CFG_PTR = bsec_selectivity_config;
+static const uint32_t CFG_LEN = (uint32_t)bsec_selectivity_config_len;
+
+#ifndef ARRAY_LEN
+  #define ARRAY_LEN(x) (sizeof(x) / sizeof((x)[0]))
+#endif
+
+static const int LED_PIN = 15;
+static const int BUZZER_PIN = 16;
+static const int I2C_SDA = 5;
+static const int I2C_SCL = 4;
+static const char* FW_VERSION = "recovery-operator-bsec2-v0.7";
+static const char* DEVICE_ID = "mycobrain-sidea-10b41d";
+static const char* DEVICE_ROLE = "side_a";
+static const char* CONFIG_VER = "bsec2-default-lp";
+static const float TEMP_OFFSET_C = 0.0f;
+static const char* SAMPLE_RATE_MODE = "lp";
+static const uint8_t CLASS_COUNT = 4;
+
+static unsigned long lastBeat = 0;
+static unsigned long lastSensorPrint = 0;
+static String buf;
+static bool buzzerReady = false;
+static uint32_t bootCount = 0;
+
+// ---- BSEC2 reading struct: all outputs the CTO requested ----
+
+struct SensorReading {
+  bool valid = false;
+  uint32_t t_ms = 0;
+
+  // Raw sensor (ambient, pre-compensation)
+  float ambient_temperature_c = NAN;
+  float ambient_humidity_pct = NAN;
+  float pressure_hpa = NAN;
+  float gas_resistance_ohm = NAN;
+
+  // BSEC heat-compensated
+  float temperature_c_comp = NAN;
+  float humidity_pct_comp = NAN;
+  float gas_resistance_ohm_comp = NAN;
+
+  // IAQ / gas analysis
+  float iaq = NAN;
+  float iaq_static = NAN;
+  float iaq_accuracy = NAN;
+  float eco2_ppm = NAN;
+  float bvoc_ppm = NAN;
+  float gas_percentage = NAN;
+
+  // Sensor status
+  float stabilization_status = NAN;
+  float run_in_status = NAN;
+  float output_accuracy = NAN;
+  int8_t bsec_status_code = 0;
+  int8_t bme68x_status_code = 0;
+
+  // Gas estimates (selectivity config)
+  float gas_estimate_1 = NAN;
+  float gas_estimate_2 = NAN;
+  float gas_estimate_3 = NAN;
+  float gas_estimate_4 = NAN;
+  float gas_estimate_accuracy = NAN;
+
+  // Raw BME68x flags
+  bool new_data = false;
+  bool measuring = false;
+  bool gas_measuring = false;
+  uint8_t gas_meas_index = 0;
+  uint8_t sub_meas_index = 0;
+  bool gas_valid = false;
+  bool heat_stable = false;
+};
+
+struct SensorSlot {
+  const char* name = nullptr;
+  uint8_t addr = 0;
+  bool present = false;
+  Bsec2 bsec;
+  uint8_t mem[BSEC_INSTANCE_SIZE];
+  bool beginOk = false;
+  bool subOk = false;
+  SensorReading r;
+  uint8_t chip_id = 0;
+  uint8_t variant_id = 0;
+
+  void init(const char* n, uint8_t a) {
+    name = n;
+    addr = a;
+  }
+};
+
+static SensorSlot S_AMB;
+static SensorSlot S_ENV;
+static SensorSlot* sensorPtrs[2] = { &S_AMB, &S_ENV };
+static const int SENSOR_COUNT = 2;
+
+static bool slotInit(SensorSlot& s);
+
+// ---- LED ----
+
+enum LedMode { LED_OFF = 0, LED_ON, LED_BLINK, LED_HEARTBEAT };
+static LedMode ledMode = LED_HEARTBEAT;
+static bool ledState = true;
+static unsigned long lastLedUpdate = 0;
+static unsigned long heartbeatPhaseStart = 0;
+
+static void reply(const char* s) {
+  Serial.println(s);
+  Serial.flush();
+}
+
+static void setLed(bool on) {
+  ledState = on;
+  digitalWrite(LED_PIN, on ? HIGH : LOW);
+}
+
+static void applyLedModeImmediate() {
+  if (ledMode == LED_OFF) setLed(false);
+  else if (ledMode == LED_ON) setLed(true);
+}
+
+// ---- Buzzer ----
+
+static void initBuzzer() {
+  if (!buzzerReady) {
+    ledcSetup(0, 2000, 8);
+    ledcAttachPin(BUZZER_PIN, 0);
+    ledcWriteTone(0, 0);
+    buzzerReady = true;
+  }
+}
+
+static void playToneHz(int hz, int durationMs, int gapMs = 20) {
+  initBuzzer();
+  if (hz > 0) {
+    ledcWriteTone(0, hz);
+    delay(durationMs);
+    ledcWriteTone(0, 0);
+  } else {
+    delay(durationMs);
+  }
+  if (gapMs > 0) delay(gapMs);
+}
+
+static void sfxCoin() { playToneHz(988, 60, 10); playToneHz(1319, 90, 0); }
+static void sfxBump() { playToneHz(220, 70, 0); }
+static void sfxPower() { playToneHz(523, 70); playToneHz(659, 70); playToneHz(784, 120, 0); }
+static void sfx1Up() { playToneHz(659, 70); playToneHz(784, 70); playToneHz(988, 70); playToneHz(1319, 140, 0); }
+
+// ---- I2C helpers ----
+
+static bool i2cRead8(uint8_t addr, uint8_t reg, uint8_t& val) {
+  Wire.beginTransmission(addr);
+  Wire.write(reg);
+  if (Wire.endTransmission(false) != 0) return false;
+  if (Wire.requestFrom((int)addr, 1) != 1) return false;
+  val = Wire.read();
+  return true;
+}
+
+static void readChipIds(SensorSlot& s) {
+  i2cRead8(s.addr, 0xD0, s.chip_id);
+  i2cRead8(s.addr, 0xF0, s.variant_id);
+}
+
+static void scanI2C() {
+  Serial.println("OK: scan begin");
+  int found = 0;
+  for (uint8_t addr = 1; addr < 127; addr++) {
+    Wire.beginTransmission(addr);
+    uint8_t err = Wire.endTransmission();
+    if (err == 0) {
+      Serial.printf("I2C: found 0x%02X\n", addr);
+      found++;
+    }
+  }
+  Serial.printf("OK: scan count=%d\n", found);
+  Serial.flush();
+}
+
+// ---- Pressure conversion (from MDP firmware) ----
+
+static float pressureToHpa(float p) {
+  if (!isfinite(p) || p <= 0) return NAN;
+  if (p > 20000.0f) return p / 100.0f;
+  if (p > 2000.0f) return p / 10.0f;
+  if (p > 200.0f) return p;
+  if (p > 20.0f) return p * 10.0f;
+  return p * 1000.0f;
+}
+
+// ---- BSEC2 callbacks ----
+
+static void slotCallbackCommon(SensorSlot& s, const bme68xData data, const bsecOutputs outputs) {
+  s.r.valid = true;
+  s.r.t_ms = millis();
+
+  // Raw sensor data from BME68x
+  s.r.ambient_temperature_c = data.temperature;
+  s.r.ambient_humidity_pct = data.humidity;
+  s.r.pressure_hpa = pressureToHpa((float)data.pressure);
+  s.r.gas_resistance_ohm = (float)data.gas_resistance;
+
+  // Raw status flags
+  s.r.new_data = (data.status & BME68X_NEW_DATA_MSK) != 0;
+  s.r.measuring = false;
+  s.r.gas_measuring = (data.status & BME68X_GASM_VALID_MSK) != 0;
+  s.r.gas_meas_index = data.gas_index;
+  s.r.sub_meas_index = data.meas_index;
+  s.r.gas_valid = (data.status & BME68X_GASM_VALID_MSK) != 0;
+  s.r.heat_stable = (data.status & BME68X_HEAT_STAB_MSK) != 0;
+
+  // Reset BSEC-derived outputs (populated from bsecOutputs below)
+  s.r.iaq = NAN;
+  s.r.iaq_static = NAN;
+  s.r.iaq_accuracy = NAN;
+  s.r.eco2_ppm = NAN;
+  s.r.bvoc_ppm = NAN;
+  s.r.gas_percentage = NAN;
+  s.r.stabilization_status = NAN;
+  s.r.run_in_status = NAN;
+  s.r.output_accuracy = NAN;
+  s.r.gas_estimate_1 = NAN;
+  s.r.gas_estimate_2 = NAN;
+  s.r.gas_estimate_3 = NAN;
+  s.r.gas_estimate_4 = NAN;
+  s.r.gas_estimate_accuracy = NAN;
+
+  for (uint8_t i = 0; i < outputs.nOutputs; i++) {
+    const bsecData& o = outputs.output[i];
+    switch (o.sensor_id) {
+      case BSEC_OUTPUT_IAQ:
+        s.r.iaq = o.signal;
+        s.r.iaq_accuracy = (float)o.accuracy;
+        s.r.output_accuracy = (float)o.accuracy;
+        break;
+      case BSEC_OUTPUT_STATIC_IAQ:
+        s.r.iaq_static = o.signal;
+        break;
+      case BSEC_OUTPUT_CO2_EQUIVALENT:
+        s.r.eco2_ppm = o.signal;
+        break;
+      case BSEC_OUTPUT_BREATH_VOC_EQUIVALENT:
+        s.r.bvoc_ppm = o.signal;
+        break;
+      case BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE:
+        s.r.temperature_c_comp = o.signal;
+        break;
+      case BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_HUMIDITY:
+        s.r.humidity_pct_comp = o.signal;
+        break;
+      case BSEC_OUTPUT_GAS_PERCENTAGE:
+        s.r.gas_percentage = o.signal;
+        break;
+      case BSEC_OUTPUT_STABILIZATION_STATUS:
+        s.r.stabilization_status = o.signal;
+        break;
+      case BSEC_OUTPUT_RUN_IN_STATUS:
+        s.r.run_in_status = o.signal;
+        break;
+      case BSEC_OUTPUT_GAS_ESTIMATE_1:
+        s.r.gas_estimate_1 = o.signal;
+        s.r.gas_estimate_accuracy = (float)o.accuracy;
+        break;
+      case BSEC_OUTPUT_GAS_ESTIMATE_2:
+        s.r.gas_estimate_2 = o.signal;
+        break;
+      case BSEC_OUTPUT_GAS_ESTIMATE_3:
+        s.r.gas_estimate_3 = o.signal;
+        break;
+      case BSEC_OUTPUT_GAS_ESTIMATE_4:
+        s.r.gas_estimate_4 = o.signal;
+        break;
+      default:
+        break;
+    }
+  }
+
+  s.r.bsec_status_code = s.bsec.status;
+  s.r.bme68x_status_code = s.bsec.sensor.status;
+}
+
+static void cbAMB(const bme68xData data, const bsecOutputs outputs, const Bsec2 /*bsec*/) {
+  slotCallbackCommon(S_AMB, data, outputs);
+}
+
+static void cbENV(const bme68xData data, const bsecOutputs outputs, const Bsec2 /*bsec*/) {
+  slotCallbackCommon(S_ENV, data, outputs);
+}
+
+// ---- Sensor init (ported from MDP firmware) ----
+
+static bool slotInit(SensorSlot& s) {
+  s.present = false;
+  s.beginOk = s.subOk = false;
+  s.r = SensorReading();
+
+  Wire.beginTransmission(s.addr);
+  if (Wire.endTransmission() != 0) return false;
+  s.present = true;
+
+  readChipIds(s);
+
+  s.bsec.allocateMemory(s.mem);
+  if (!s.bsec.begin(s.addr, Wire)) {
+    Serial.printf("BSEC: %s begin FAIL at 0x%02X\n", s.name, s.addr);
+    return false;
+  }
+  s.beginOk = true;
+
+  s.bsec.setTemperatureOffset(TEMP_OFFSET_C);
+  // Selectivity config skipped — blob is incompatible with BSEC 2.6.1.0.
+  // Gas estimates (1-4) require a matching config from BME AI-Studio.
+
+  if (s.addr == 0x77) s.bsec.attachCallback(cbAMB);
+  if (s.addr == 0x76) s.bsec.attachCallback(cbENV);
+
+  bsecSensor list[] = {
+    BSEC_OUTPUT_IAQ,
+    BSEC_OUTPUT_STATIC_IAQ,
+    BSEC_OUTPUT_CO2_EQUIVALENT,
+    BSEC_OUTPUT_BREATH_VOC_EQUIVALENT,
+    BSEC_OUTPUT_STABILIZATION_STATUS,
+    BSEC_OUTPUT_RUN_IN_STATUS,
+    BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE,
+    BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_HUMIDITY
+  };
+
+  if (!s.bsec.updateSubscription(list, (uint8_t)ARRAY_LEN(list), BSEC_SAMPLE_RATE_LP)) {
+    if (s.bsec.status < BSEC_OK) {
+      Serial.printf("BSEC: %s subscription ERROR (status=%d)\n", s.name, s.bsec.status);
+      return false;
+    }
+    Serial.printf("BSEC: %s subscription WARNING (status=%d) — proceeding\n", s.name, s.bsec.status);
+  }
+  s.subOk = true;
+  Serial.printf("BSEC: %s OK at 0x%02X chip=0x%02X var=0x%02X\n",
+                s.name, s.addr, s.chip_id, s.variant_id);
+  return true;
+}
+
+static void initAllSensors() {
+  Wire.end();
+  Wire.begin(I2C_SDA, I2C_SCL);
+  Wire.setClock(100000);
+
+  S_AMB.init("amb", 0x77);
+  S_ENV.init("env", 0x76);
+  slotInit(S_AMB);
+  slotInit(S_ENV);
+}
+
+// ---- JSON output helpers ----
+
+static void jf(const char* key, float val, int dec = 2) {
+  Serial.print(",\""); Serial.print(key); Serial.print("\":");
+  if (isnan(val)) Serial.print("null");
+  else Serial.print(val, dec);
+}
+
+static void ji(const char* key, int val) {
+  Serial.print(",\""); Serial.print(key); Serial.print("\":");
+  Serial.print(val);
+}
+
+static void jb(const char* key, bool val) {
+  Serial.print(",\""); Serial.print(key); Serial.print("\":");
+  Serial.print(val ? "true" : "false");
+}
+
+static void js(const char* key, const char* val) {
+  Serial.print(",\""); Serial.print(key); Serial.print("\":\"");
+  Serial.print(val); Serial.print("\"");
+}
+
+static void jshex(const char* key, uint8_t val) {
+  char h[5];
+  snprintf(h, sizeof(h), "0x%02X", val);
+  js(key, h);
+}
+
+// ---- Full telemetry JSON per slot ----
+
+static void printSlotJson(const SensorSlot& s) {
+  const SensorReading& r = s.r;
+  uint32_t uptime_s = millis() / 1000;
+
+  Serial.print("{\"type\":\"telemetry\"");
+  js("device_id", DEVICE_ID);
+  js("node_id", DEVICE_ID);
+  js("role", DEVICE_ROLE);
+  js("sensor_slot", s.name);
+  jshex("address", s.addr);
+  jb("present", s.present);
+  jb("valid", r.valid);
+  js("fw_version", FW_VERSION);
+  js("config_version", CONFIG_VER);
+
+  // BSEC version
+  char bver[24];
+  snprintf(bver, sizeof(bver), "%d.%d.%d.%d",
+           s.bsec.version.major, s.bsec.version.minor,
+           s.bsec.version.major_bugfix, s.bsec.version.minor_bugfix);
+  js("bsec_version", bver);
+
+  Serial.print(",\"location\":{\"lat\":null,\"lon\":null,\"source\":\"na\"}");
+
+  ji("ts_ms", (int)millis());
+
+  if (r.valid) {
+    // Compensated environmental
+    jf("temperature_c_comp", r.temperature_c_comp);
+    if (!isnan(r.temperature_c_comp))
+      jf("temperature_f_comp", r.temperature_c_comp * 9.0f / 5.0f + 32.0f);
+    else
+      jf("temperature_f_comp", NAN);
+    jf("humidity_pct_comp", r.humidity_pct_comp);
+    jf("gas_resistance_ohm_comp", r.gas_resistance_ohm_comp);
+
+    // Ambient (raw, pre-compensation)
+    jf("ambient_temperature_c", r.ambient_temperature_c);
+    if (!isnan(r.ambient_temperature_c))
+      jf("ambient_temperature_f", r.ambient_temperature_c * 9.0f / 5.0f + 32.0f);
+    else
+      jf("ambient_temperature_f", NAN);
+    jf("ambient_humidity_pct", r.ambient_humidity_pct);
+
+    // IAQ / gas analysis
+    jf("iaq", r.iaq);
+    jf("iaq_static", r.iaq_static);
+    jf("iaq_accuracy", r.iaq_accuracy, 0);
+    jf("eco2_ppm", r.eco2_ppm);
+    jf("bvoc_ppm", r.bvoc_ppm);
+    jf("gas_percentage", r.gas_percentage);
+
+    // Pressure + raw gas
+    jf("pressure_hpa", r.pressure_hpa);
+    jf("gas_resistance_ohm", r.gas_resistance_ohm, 0);
+
+    // Sensor status
+    jf("stabilization_status", r.stabilization_status, 0);
+    jf("run_in_status", r.run_in_status, 0);
+    jf("output_accuracy", r.output_accuracy, 0);
+    ji("bsec_status_code", r.bsec_status_code);
+    ji("bme68x_status_code", r.bme68x_status_code);
+
+    // Gas estimates
+    jf("gas_estimate_1", r.gas_estimate_1);
+    jf("gas_estimate_2", r.gas_estimate_2);
+    jf("gas_estimate_3", r.gas_estimate_3);
+    jf("gas_estimate_4", r.gas_estimate_4);
+    jf("gas_estimate_accuracy", r.gas_estimate_accuracy, 0);
+
+    // Raw sensor flags
+    jb("new_data", r.new_data);
+    jb("measuring", r.measuring);
+    jb("gas_measuring", r.gas_measuring);
+    ji("gas_meas_index", r.gas_meas_index);
+    ji("sub_meas_index", r.sub_meas_index);
+    jb("gas_valid", r.gas_valid);
+    jb("heat_stable", r.heat_stable);
+    jshex("chip_id", s.chip_id);
+    jshex("variant_id", s.variant_id);
+  }
+
+  // Metadata (always emitted)
+  jf("temp_offset_c", TEMP_OFFSET_C, 1);
+  js("sample_rate_mode", SAMPLE_RATE_MODE);
+  ji("heater_profile_id", 0);
+  js("model_type", "selectivity");
+  ji("class_count", CLASS_COUNT);
+  ji("uptime_s", (int)uptime_s);
+  ji("boot_count", (int)bootCount);
+
+  Serial.println("}");
+  Serial.flush();
+}
+
+static void printAllSensorJson() {
+  for (int i = 0; i < SENSOR_COUNT; i++) {
+    SensorSlot* s = sensorPtrs[i];
+    if (s->present) printSlotJson(*s);
+  }
+}
+
+// ---- CLI ----
+
+static void printHelp() {
+  Serial.println("OK: commands");
+  Serial.println("  ping");
+  Serial.println("  help");
+  Serial.println("  status");
+  Serial.println("  scan");
+  Serial.println("  sensor");
+  Serial.println("  sensor init");
+  Serial.println("  sensor json");
+  Serial.println("  led on|off|blink|heartbeat|probe");
+  Serial.println("  coin|bump|power|1up");
+  Serial.println("  test outputs");
+  Serial.println("  reboot");
+  Serial.flush();
+}
+
+static void printStatus() {
+  Serial.printf("OK: status version=%s uptime_ms=%lu\n", FW_VERSION, millis());
+  for (int i = 0; i < SENSOR_COUNT; i++) {
+    SensorSlot* s = sensorPtrs[i];
+    Serial.printf("  %s: present=%s addr=0x%02X begin=%s sub=%s chip=0x%02X var=0x%02X\n",
+                  s->name,
+                  s->present ? "YES" : "NO",
+                  s->addr,
+                  s->beginOk ? "OK" : "FAIL",
+                  s->subOk ? "OK" : "FAIL",
+                  s->chip_id, s->variant_id);
+  }
+  Serial.printf("  led_mode=%d buzzer=%s reboot_count=%u\n",
+                (int)ledMode, buzzerReady ? "ready" : "not_init", bootCount);
+  Serial.flush();
+}
+
+static void ledProbe() {
+  Serial.println("OK: led probe begin");
+  ledMode = LED_OFF;
+  setLed(false);
+  delay(300);
+  for (int i = 0; i < 5; i++) {
+    setLed(true);
+    delay(300);
+    setLed(false);
+    delay(300);
+  }
+  ledMode = LED_HEARTBEAT;
+  heartbeatPhaseStart = millis();
+  Serial.println("OK: led probe done; mode=heartbeat");
+  Serial.flush();
+}
+
+static void testOutputs() {
+  Serial.println("OK: test outputs begin");
+  ledProbe();
+  sfxCoin(); delay(100);
+  sfxBump(); delay(100);
+  sfxPower(); delay(100);
+  sfx1Up();
+  Serial.println("OK: test outputs done");
+  Serial.flush();
+}
+
+static void handleCommand(String cmd) {
+  cmd.trim();
+  cmd.toLowerCase();
+
+  if (cmd == "ping") {
+    reply("OK: ping");
+  } else if (cmd == "help") {
+    printHelp();
+  } else if (cmd == "status") {
+    printStatus();
+  } else if (cmd == "sensor" || cmd == "sensor json") {
+    printAllSensorJson();
+  } else if (cmd == "sensor init") {
+    initAllSensors();
+    int count = 0;
+    for (int i = 0; i < SENSOR_COUNT; i++) if (sensorPtrs[i]->present) count++;
+    Serial.printf("OK: sensor init found=%d\n", count);
+    Serial.flush();
+  } else if (cmd == "led on") {
+    ledMode = LED_ON; applyLedModeImmediate(); reply("OK: led on");
+  } else if (cmd == "led off") {
+    ledMode = LED_OFF; applyLedModeImmediate(); reply("OK: led off");
+  } else if (cmd == "led blink") {
+    ledMode = LED_BLINK; lastLedUpdate = millis(); reply("OK: led blink");
+  } else if (cmd == "led heartbeat") {
+    ledMode = LED_HEARTBEAT; heartbeatPhaseStart = millis(); reply("OK: led heartbeat");
+  } else if (cmd == "led probe") {
+    ledProbe();
+  } else if (cmd == "scan") {
+    scanI2C();
+  } else if (cmd == "coin") {
+    sfxCoin(); reply("OK: coin");
+  } else if (cmd == "bump") {
+    sfxBump(); reply("OK: bump");
+  } else if (cmd == "power") {
+    sfxPower(); reply("OK: power");
+  } else if (cmd == "1up") {
+    sfx1Up(); reply("OK: 1up");
+  } else if (cmd == "test outputs") {
+    testOutputs();
+  } else if (cmd == "reboot") {
+    reply("OK: rebooting");
+    delay(250);
+    ESP.restart();
+  } else if (cmd.length()) {
+    Serial.print("ERR: ");
+    Serial.println(cmd);
+    Serial.flush();
+  }
+}
+
+// ---- LED service ----
+
+static void serviceLed() {
+  unsigned long now = millis();
+  if (ledMode == LED_BLINK) {
+    if (now - lastLedUpdate >= 700) {
+      lastLedUpdate = now;
+      setLed(!ledState);
+    }
+  } else if (ledMode == LED_HEARTBEAT) {
+    unsigned long phase = (now - heartbeatPhaseStart) % 1800;
+    bool on = (phase < 120) || (phase >= 220 && phase < 340);
+    if (on != ledState) setLed(on);
+  }
+}
+
+// ---- Arduino entry points ----
+
+void setup() {
+  Serial.begin(115200);
+  delay(1500);
+
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
+  digitalWrite(BUZZER_PIN, LOW);
+
+  initAllSensors();
+
+  ledMode = LED_HEARTBEAT;
+  heartbeatPhaseStart = millis();
+  applyLedModeImmediate();
+
+  reply("BOOT: recovery-operator-bsec2 ready");
+  printHelp();
+}
+
+void loop() {
+  while (Serial.available() > 0) {
+    char c = (char)Serial.read();
+    if (c == '\n' || c == '\r') {
+      if (buf.length()) handleCommand(buf);
+      buf = "";
+    } else {
+      buf += c;
+    }
+  }
+
+  // Run BSEC2 processing for each present sensor
+  if (S_AMB.present && S_AMB.beginOk) (void)S_AMB.bsec.run();
+  if (S_ENV.present && S_ENV.beginOk) (void)S_ENV.bsec.run();
+
+  serviceLed();
+
+  if (millis() - lastSensorPrint > 3000) {
+    lastSensorPrint = millis();
+    printAllSensorJson();
+  }
+
+  if (millis() - lastBeat > 5000) {
+    lastBeat = millis();
+    Serial.printf("OK: heartbeat ms=%lu\n", lastBeat);
+    Serial.flush();
+  }
+
+  delay(5);
+}

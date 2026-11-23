@@ -1,0 +1,481 @@
+#include <Arduino.h>
+#include <Wire.h>
+#include "bsec2.h"
+#include "bsec_selectivity.h"
+
+static const int LED_PIN = 15;
+static const int BUZZER_PIN = 16;
+static const int I2C_SDA = 5;
+static const int I2C_SCL = 4;
+static const uint8_t SENSOR_ADDR = 0x77;
+static const uint32_t I2C_HZ = 100000;
+static const char* FW_VERSION = "recovery-operator-bme77-v0.3";
+
+static unsigned long lastBeat = 0;
+static unsigned long lastJson = 0;
+static String buf;
+static bool buzzerReady = false;
+static uint32_t rebootCount = 0;
+static bool sensorJsonAuto = true;
+static uint32_t sensorJsonPeriodMs = 2000;
+
+struct SensorReading {
+  bool present = false;
+  bool beginOk = false;
+  bool subOk = false;
+  bool valid = false;
+  uint32_t t_ms = 0;
+  float tC = NAN;
+  float rh = NAN;
+  float p_raw = NAN;
+  float p_hPa = NAN;
+  float gas_ohm = NAN;
+  float iaq = NAN;
+  float co2eq = NAN;
+  float voc = NAN;
+  float gasClass = NAN;
+  float gasProb = NAN;
+};
+
+static SensorReading gSensor;
+static Bsec2 gBsec;
+static uint8_t gBsecMem[BSEC_INSTANCE_SIZE];
+
+enum LedMode {
+  LED_OFF = 0,
+  LED_ON = 1,
+  LED_BLINK = 2,
+  LED_HEARTBEAT = 3,
+};
+
+static LedMode ledMode = LED_ON;
+static bool ledState = true;
+static unsigned long lastLedUpdate = 0;
+static unsigned long heartbeatPhaseStart = 0;
+
+static float pressureToHpa(float p) {
+  if (!isfinite(p) || p <= 0) return NAN;
+  if (p > 20000.0f) return p / 100.0f;
+  if (p > 2000.0f) return p / 10.0f;
+  if (p > 200.0f) return p;
+  if (p > 20.0f) return p * 10.0f;
+  return p * 1000.0f;
+}
+
+static void logLine(const char* s) {
+  Serial.println(s);
+  Serial.flush();
+}
+
+static void setLed(bool on) {
+  ledState = on;
+  digitalWrite(LED_PIN, on ? HIGH : LOW);
+}
+
+static void applyLedModeImmediate() {
+  if (ledMode == LED_OFF) setLed(false);
+  else if (ledMode == LED_ON) setLed(true);
+}
+
+static void initBuzzer() {
+  if (!buzzerReady) {
+    ledcSetup(0, 2000, 8);
+    ledcAttachPin(BUZZER_PIN, 0);
+    ledcWriteTone(0, 0);
+    buzzerReady = true;
+  }
+}
+
+static void playToneHz(int hz, int durationMs, int gapMs = 20) {
+  initBuzzer();
+  if (hz > 0) {
+    ledcWriteTone(0, hz);
+    delay(durationMs);
+    ledcWriteTone(0, 0);
+  } else {
+    delay(durationMs);
+  }
+  if (gapMs > 0) delay(gapMs);
+}
+
+static void sfxCoin() {
+  playToneHz(988, 60, 10);
+  playToneHz(1319, 90, 0);
+}
+
+static void sfxBump() {
+  playToneHz(220, 70, 0);
+}
+
+static void sfxPower() {
+  playToneHz(523, 70);
+  playToneHz(659, 70);
+  playToneHz(784, 120, 0);
+}
+
+static void sfx1Up() {
+  playToneHz(659, 70);
+  playToneHz(784, 70);
+  playToneHz(988, 70);
+  playToneHz(1319, 140, 0);
+}
+
+static void scanI2C() {
+  Serial.println("OK: scan begin");
+  int found = 0;
+  for (uint8_t addr = 1; addr < 127; addr++) {
+    Wire.beginTransmission(addr);
+    uint8_t err = Wire.endTransmission();
+    if (err == 0) {
+      Serial.print("I2C: found 0x");
+      if (addr < 16) Serial.print('0');
+      Serial.println(addr, HEX);
+      found++;
+    }
+  }
+  Serial.print("OK: scan count=");
+  Serial.println(found);
+  Serial.flush();
+}
+
+static void sensorCallback(const bme68xData data, const bsecOutputs outputs, const Bsec2 /*bsec*/) {
+  gSensor.valid = true;
+  gSensor.t_ms = millis();
+  gSensor.tC = data.temperature;
+  gSensor.rh = data.humidity;
+  gSensor.p_raw = (float)data.pressure;
+  gSensor.p_hPa = pressureToHpa(gSensor.p_raw);
+  gSensor.gas_ohm = (float)data.gas_resistance;
+  gSensor.iaq = NAN;
+  gSensor.co2eq = NAN;
+  gSensor.voc = NAN;
+  gSensor.gasClass = NAN;
+  gSensor.gasProb = NAN;
+
+  for (uint8_t i = 0; i < outputs.nOutputs; i++) {
+    const bsecData &o = outputs.output[i];
+    switch (o.sensor_id) {
+      case BSEC_OUTPUT_IAQ:
+        gSensor.iaq = o.signal;
+        break;
+      case BSEC_OUTPUT_CO2_EQUIVALENT:
+        gSensor.co2eq = o.signal;
+        break;
+      case BSEC_OUTPUT_BREATH_VOC_EQUIVALENT:
+        gSensor.voc = o.signal;
+        break;
+      case BSEC_OUTPUT_GAS_ESTIMATE_1:
+      case BSEC_OUTPUT_GAS_ESTIMATE_2:
+      case BSEC_OUTPUT_GAS_ESTIMATE_3:
+      case BSEC_OUTPUT_GAS_ESTIMATE_4:
+        if (o.signal > 0.1f) {
+          gSensor.gasClass = (float)(o.sensor_id - BSEC_OUTPUT_GAS_ESTIMATE_1);
+          gSensor.gasProb = o.signal;
+        }
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+static bool initSensor() {
+  gSensor = SensorReading();
+
+  Wire.beginTransmission(SENSOR_ADDR);
+  if (Wire.endTransmission() != 0) {
+    return false;
+  }
+  gSensor.present = true;
+
+  gBsec.allocateMemory(gBsecMem);
+  if (!gBsec.begin(SENSOR_ADDR, Wire)) {
+    return false;
+  }
+  gSensor.beginOk = true;
+
+  gBsec.setTemperatureOffset(0.0f);
+  if (!gBsec.setConfig(bsec_selectivity_config)) {
+    return false;
+  }
+
+  gBsec.attachCallback(sensorCallback);
+
+  bsecSensor list[] = {
+    BSEC_OUTPUT_IAQ,
+    BSEC_OUTPUT_STATIC_IAQ,
+    BSEC_OUTPUT_CO2_EQUIVALENT,
+    BSEC_OUTPUT_BREATH_VOC_EQUIVALENT,
+    BSEC_OUTPUT_GAS_ESTIMATE_1,
+    BSEC_OUTPUT_GAS_ESTIMATE_2,
+    BSEC_OUTPUT_GAS_ESTIMATE_3,
+    BSEC_OUTPUT_GAS_ESTIMATE_4
+  };
+
+  if (!gBsec.updateSubscription(list, (uint8_t)(sizeof(list) / sizeof(list[0])), BSEC_SAMPLE_RATE_LP)) {
+    return false;
+  }
+
+  gSensor.subOk = true;
+  return true;
+}
+
+static void printSensorJson() {
+  Serial.print("{");
+  Serial.print("\"type\":\"sensor\"");
+  Serial.print(",\"fw\":\"");
+  Serial.print(FW_VERSION);
+  Serial.print("\"");
+  Serial.print(",\"addr\":119");
+  Serial.print(",\"present\":");
+  Serial.print(gSensor.present ? "true" : "false");
+  Serial.print(",\"begin_ok\":");
+  Serial.print(gSensor.beginOk ? "true" : "false");
+  Serial.print(",\"sub_ok\":");
+  Serial.print(gSensor.subOk ? "true" : "false");
+  Serial.print(",\"valid\":");
+  Serial.print(gSensor.valid ? "true" : "false");
+  Serial.print(",\"ts_ms\":");
+  Serial.print(gSensor.t_ms);
+
+  if (gSensor.valid) {
+    Serial.print(",\"temperature_c\":"); Serial.print(gSensor.tC, 2);
+    Serial.print(",\"humidity_pct\":"); Serial.print(gSensor.rh, 2);
+    Serial.print(",\"pressure_hpa\":"); Serial.print(gSensor.p_hPa, 2);
+    Serial.print(",\"gas_ohm\":"); Serial.print(gSensor.gas_ohm, 0);
+    if (isfinite(gSensor.iaq)) { Serial.print(",\"iaq\":"); Serial.print(gSensor.iaq, 2); }
+    if (isfinite(gSensor.co2eq)) { Serial.print(",\"co2eq\":"); Serial.print(gSensor.co2eq, 2); }
+    if (isfinite(gSensor.voc)) { Serial.print(",\"voc\":"); Serial.print(gSensor.voc, 2); }
+    if (isfinite(gSensor.gasClass)) { Serial.print(",\"gas_class\":"); Serial.print(gSensor.gasClass, 0); }
+    if (isfinite(gSensor.gasProb)) { Serial.print(",\"gas_prob\":"); Serial.print(gSensor.gasProb, 3); }
+  }
+
+  Serial.println("}");
+  Serial.flush();
+}
+
+static void printHelp() {
+  Serial.println("OK: commands");
+  Serial.println("  ping");
+  Serial.println("  help");
+  Serial.println("  status");
+  Serial.println("  scan");
+  Serial.println("  sensor");
+  Serial.println("  sensor init");
+  Serial.println("  sensor json");
+  Serial.println("  sensor auto on|off");
+  Serial.println("  led on|off|blink|heartbeat|probe");
+  Serial.println("  coin|bump|power|1up");
+  Serial.println("  test outputs");
+  Serial.println("  reboot");
+  Serial.flush();
+}
+
+static void printStatus() {
+  Serial.print("OK: status version=");
+  Serial.print(FW_VERSION);
+  Serial.print(" uptime_ms=");
+  Serial.print(millis());
+  Serial.print(" led_mode=");
+  switch (ledMode) {
+    case LED_OFF: Serial.print("off"); break;
+    case LED_ON: Serial.print("on"); break;
+    case LED_BLINK: Serial.print("blink"); break;
+    case LED_HEARTBEAT: Serial.print("heartbeat"); break;
+  }
+  Serial.print(" led_pin=");
+  Serial.print(LED_PIN);
+  Serial.print(" buzzer_pin=");
+  Serial.print(BUZZER_PIN);
+  Serial.print(" i2c_sda=");
+  Serial.print(I2C_SDA);
+  Serial.print(" i2c_scl=");
+  Serial.print(I2C_SCL);
+  Serial.print(" sensor_addr=0x77");
+  Serial.print(" present=");
+  Serial.print(gSensor.present ? "yes" : "no");
+  Serial.print(" begin=");
+  Serial.print(gSensor.beginOk ? "ok" : "fail");
+  Serial.print(" sub=");
+  Serial.print(gSensor.subOk ? "ok" : "fail");
+  Serial.print(" valid=");
+  Serial.print(gSensor.valid ? "yes" : "no");
+  Serial.print(" auto_json=");
+  Serial.print(sensorJsonAuto ? "on" : "off");
+  Serial.print(" reboot_count=");
+  Serial.println(rebootCount);
+  Serial.flush();
+}
+
+static void ledProbe() {
+  Serial.println("OK: led probe begin");
+  ledMode = LED_OFF;
+  setLed(false);
+  delay(300);
+  for (int i = 0; i < 5; i++) {
+    setLed(true);
+    delay(300);
+    setLed(false);
+    delay(300);
+  }
+  ledMode = LED_HEARTBEAT;
+  heartbeatPhaseStart = millis();
+  Serial.println("OK: led probe done; mode=heartbeat");
+  Serial.flush();
+}
+
+static void testOutputs() {
+  Serial.println("OK: test outputs begin");
+  ledProbe();
+  sfxCoin();
+  delay(100);
+  sfxBump();
+  delay(100);
+  sfxPower();
+  delay(100);
+  sfx1Up();
+  Serial.println("OK: test outputs done");
+  Serial.flush();
+}
+
+static void handleCommand(String cmd) {
+  cmd.trim();
+  cmd.toLowerCase();
+
+  if (cmd == "ping") {
+    logLine("OK: ping");
+  } else if (cmd == "help") {
+    printHelp();
+  } else if (cmd == "status") {
+    printStatus();
+  } else if (cmd == "scan") {
+    scanI2C();
+  } else if (cmd == "sensor") {
+    printSensorJson();
+  } else if (cmd == "sensor init") {
+    bool ok = initSensor();
+    Serial.print("OK: sensor init ");
+    Serial.println(ok ? "ok" : "fail");
+    Serial.flush();
+  } else if (cmd == "sensor json") {
+    printSensorJson();
+  } else if (cmd == "sensor auto on") {
+    sensorJsonAuto = true;
+    Serial.print("OK: sensor auto on period_ms=");
+    Serial.println(sensorJsonPeriodMs);
+    Serial.flush();
+  } else if (cmd == "sensor auto off") {
+    sensorJsonAuto = false;
+    logLine("OK: sensor auto off");
+  } else if (cmd == "led on") {
+    ledMode = LED_ON;
+    applyLedModeImmediate();
+    logLine("OK: led on");
+  } else if (cmd == "led off") {
+    ledMode = LED_OFF;
+    applyLedModeImmediate();
+    logLine("OK: led off");
+  } else if (cmd == "led blink") {
+    ledMode = LED_BLINK;
+    lastLedUpdate = millis();
+    logLine("OK: led blink");
+  } else if (cmd == "led heartbeat") {
+    ledMode = LED_HEARTBEAT;
+    heartbeatPhaseStart = millis();
+    logLine("OK: led heartbeat");
+  } else if (cmd == "led probe") {
+    ledProbe();
+  } else if (cmd == "coin") {
+    sfxCoin();
+    logLine("OK: coin");
+  } else if (cmd == "bump") {
+    sfxBump();
+    logLine("OK: bump");
+  } else if (cmd == "power") {
+    sfxPower();
+    logLine("OK: power");
+  } else if (cmd == "1up") {
+    sfx1Up();
+    logLine("OK: 1up");
+  } else if (cmd == "test outputs") {
+    testOutputs();
+  } else if (cmd == "reboot") {
+    logLine("OK: rebooting");
+    delay(250);
+    ESP.restart();
+  } else if (cmd.length()) {
+    Serial.print("ERR: ");
+    Serial.println(cmd);
+    Serial.flush();
+  }
+}
+
+static void serviceLed() {
+  unsigned long now = millis();
+  if (ledMode == LED_BLINK) {
+    if (now - lastLedUpdate >= 700) {
+      lastLedUpdate = now;
+      setLed(!ledState);
+    }
+  } else if (ledMode == LED_HEARTBEAT) {
+    unsigned long phase = (now - heartbeatPhaseStart) % 1800;
+    bool on = (phase < 120) || (phase >= 220 && phase < 340);
+    if (on != ledState) setLed(on);
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  delay(1500);
+
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
+  digitalWrite(BUZZER_PIN, LOW);
+
+  Wire.begin(I2C_SDA, I2C_SCL);
+  Wire.setClock(I2C_HZ);
+
+  ledMode = LED_HEARTBEAT;
+  heartbeatPhaseStart = millis();
+  applyLedModeImmediate();
+
+  bool sensorOk = initSensor();
+
+  logLine("BOOT: recovery-operator ready");
+  Serial.print("OK: sensor bootstrap ");
+  Serial.println(sensorOk ? "ok" : "fail");
+  printHelp();
+}
+
+void loop() {
+  while (Serial.available() > 0) {
+    char c = (char)Serial.read();
+    if (c == '\n' || c == '\r') {
+      if (buf.length()) handleCommand(buf);
+      buf = "";
+    } else {
+      buf += c;
+    }
+  }
+
+  if (gSensor.present && gSensor.beginOk) {
+    (void)gBsec.run();
+  }
+
+  serviceLed();
+
+  unsigned long now = millis();
+  if (sensorJsonAuto && now - lastJson > sensorJsonPeriodMs) {
+    lastJson = now;
+    printSensorJson();
+  }
+
+  if (now - lastBeat > 5000) {
+    lastBeat = now;
+    Serial.print("OK: heartbeat ms=");
+    Serial.println(lastBeat);
+    Serial.flush();
+  }
+
+  delay(10);
+}
