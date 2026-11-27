@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# AWS topology correction 2026-11-27: production is AWS-only; this file's legacy on-prem references are not deployment authority. See AWS_INFRA_REFERENCE.md for its replacement and disposition. Loopback development and physical-device fixtures are separate.
+printf '%s\n' 'Retired on-prem utility: use the AWS release/SSM procedure in AWS_INFRA_REFERENCE.md; no local production servers exist.' >&2
+exit 64
 # Run ON the Jetson (or Pi) to capture everything we need to align it with the unified agent.
 # Usage:
 #   ssh user@192.168.0.228 'bash -s' < scripts/probe-jetson.sh

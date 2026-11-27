@@ -1,3 +1,5 @@
+> **AWS topology correction 2026-11-27: production is AWS-only; this file's legacy on-prem references are not deployment authority. See [AWS_INFRA_REFERENCE.md](../AWS_INFRA_REFERENCE.md) for its replacement and disposition. Loopback development and physical-device fixtures are separate.**
+
 # FCI Endpoint Options for MycoBrain Firmware
 
 **Date:** February 10, 2026  
@@ -162,7 +164,7 @@ When an FCI device connects or disconnects, the firmware should notify MAS:
 
 ### Device Connected
 ```http
-POST http://192.168.0.188:8001/api/fci/devices/notify
+POST http://mas-internal.mycosoft.com:8001/api/fci/devices/notify
 Content-Type: application/json
 
 {
@@ -173,7 +175,7 @@ Content-Type: application/json
 
 ### Device Disconnected
 ```http
-POST http://192.168.0.188:8001/api/fci/devices/notify
+POST http://mas-internal.mycosoft.com:8001/api/fci/devices/notify
 Content-Type: application/json
 
 {

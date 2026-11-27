@@ -1,3 +1,4 @@
+# AWS topology correction 2026-11-27: production is AWS-only; this file's legacy on-prem references are not deployment authority. See AWS_INFRA_REFERENCE.md for its replacement and disposition. Loopback development and physical-device fixtures are separate.
 """Self-running probe of all three reachable MycoBrains.
 
 This script is what Claude double-clicks via File Explorer when it needs to

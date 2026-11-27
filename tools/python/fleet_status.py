@@ -1,3 +1,4 @@
+# AWS topology correction 2026-11-27: production is AWS-only; this file's legacy on-prem references are not deployment authority. See AWS_INFRA_REFERENCE.md for its replacement and disposition. Loopback development and physical-device fixtures are separate.
 """Poll every paired MycoBrain agent and print a fleet status table.
 
 Reads the agent's :8787 /status and /info on each host (LAN). Used for the

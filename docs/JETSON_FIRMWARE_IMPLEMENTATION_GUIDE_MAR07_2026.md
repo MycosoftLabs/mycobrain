@@ -1,3 +1,5 @@
+> **AWS topology correction 2026-11-27: production is AWS-only; this file's legacy on-prem references are not deployment authority. See [AWS_INFRA_REFERENCE.md](../AWS_INFRA_REFERENCE.md) for its replacement and disposition. Loopback development and physical-device fixtures are separate.**
+
 # Jetson and Firmware Implementation Guide
 
 **Date:** March 7, 2026  
@@ -159,10 +161,10 @@ export GATEWAY_ID=site-gateway-01
 export GATEWAY_HOST=192.168.0.123
 export GATEWAY_PORT=8120
 export GATEWAY_LOCATION=server-room
-export MAS_API_URL=http://192.168.0.188:8001
-export MYCORRHIZAE_API_URL=http://192.168.0.187:8002
-export MINDEX_API_URL=http://192.168.0.189:8000
-export TELEMETRY_INGEST_URL=http://192.168.0.187:3000
+export MAS_API_URL=http://mas-internal.mycosoft.com:8001
+export MYCORRHIZAE_API_URL=http://internal-mycosoft-core-int-21300503.us-east-1.elb.amazonaws.com:8002
+export MINDEX_API_URL=http://mindex-internal.mycosoft.com:8000
+export TELEMETRY_INGEST_URL=https://mycosoft.com
 export GATEWAY_OPENCLAW_BASE_URL=http://127.0.0.1:8000
 export GATEWAY_OPENCLAW_API_KEY=<your_openclaw_key_if_required>
 ```

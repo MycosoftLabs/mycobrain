@@ -1,3 +1,5 @@
+> **AWS topology correction 2026-11-27: production is AWS-only; this file's legacy on-prem references are not deployment authority. See [AWS_INFRA_REFERENCE.md](../AWS_INFRA_REFERENCE.md) for its replacement and disposition. Loopback development and physical-device fixtures are separate.**
+
 # MycoBrain × NatureOS Device Manager — Implementation Plan
 
 **Date:** 2026-05-21
@@ -49,7 +51,7 @@ mycobrain/
 | 3 | `mycobrain-jet-b` | older Jetson, not on net | n/a | none | `:8787` after `scripts/bootstrap-dead-jetson.sh` |
 | 4 | `mycobrain-bench` | Windows PC over COM4 | no | legacy WS `:8765` | `:8787` agent + legacy WS preserved |
 
-Today the website hits `lib/mycobrain-service-url.ts` → `http://192.168.0.196:8003`. That's a single MAS service that talks to whatever's plugged in via serial. After this plan, the website fans out: `:8787` per device-IP for the live agent, and `:8003` only for the bench/legacy fallback.
+Today the website hits `lib/mycobrain-service-url.ts` → `http://mycobrain-internal.mycosoft.com:8003`. That's a single MAS service that talks to whatever's plugged in via serial. After this plan, the website fans out: `:8787` per device-IP for the live agent, and `:8003` only for the bench/legacy fallback.
 
 ## PR rollout (this PR is #8)
 
