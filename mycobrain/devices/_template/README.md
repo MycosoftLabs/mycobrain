@@ -1,4 +1,9 @@
+> AWS topology correction 2026-11-27: local production servers, LAN addresses and VM/Proxmox/NAS deployment instructions are retired. Use [AWS_INFRA_REFERENCE.md](../../../AWS_INFRA_REFERENCE.md). Preserve historical evidence and optional device/external connectors.
+
 # `<device-nickname>`
+
+> **Network update (2026-11-27):** Device addresses below were on the garage LAN, which was decommissioned 2026-10-15 (Mycosoft has no local servers; MINDEX/MAS/website run on AWS). Confirm each device's current network address live before connecting; never assume the old 192.168.0.x address.
+
 
 > **Skeleton.** Copy this folder to a new name (`mycobrain/devices/<nickname>/`) and fill in the placeholders below.
 

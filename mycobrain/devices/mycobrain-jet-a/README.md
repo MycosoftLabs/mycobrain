@@ -1,4 +1,9 @@
+> AWS topology correction 2026-11-27: local production servers, LAN addresses and VM/Proxmox/NAS deployment instructions are retired. Use [AWS_INFRA_REFERENCE.md](../../../AWS_INFRA_REFERENCE.md). Preserve historical evidence and optional device/external connectors.
+
 # `mycobrain-jet-a` — Jetson + OpenClaw + Mushroom1
+
+> **Network update (2026-11-27):** Device addresses below were on the garage LAN, which was decommissioned 2026-10-15 (Mycosoft has no local servers; MINDEX/MAS/website run on AWS). Confirm each device's current network address live before connecting; never assume the old 192.168.0.x address.
+
 
 ## Identity
 
@@ -7,7 +12,7 @@
 | `device_id` | `mycobrain-jet-a-001` |
 | Role | `mushroom1` |
 | Host kind | `jetson_orin` |
-| Host IP | `192.168.0.228` |
+| Host IP | `<device IP — confirm live>` |
 | Owner | morgan@mycosoft.org |
 | OpenClaw | yes |
 
@@ -20,7 +25,7 @@
 
 ## SSH
 
-`ssh jetson@192.168.0.228` — credentials in Claude memory (`mycobrain_jetson_ssh.md`), rotation-pending.
+`ssh jetson@<device-ip>` — credentials in Claude memory (`mycobrain_jetson_ssh.md`), rotation-pending.
 
 ## Bring-up
 

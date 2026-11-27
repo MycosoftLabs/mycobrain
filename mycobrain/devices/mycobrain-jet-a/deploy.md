@@ -1,9 +1,14 @@
+> AWS topology correction 2026-11-27: local production servers, LAN addresses and VM/Proxmox/NAS deployment instructions are retired. Use [AWS_INFRA_REFERENCE.md](../../../AWS_INFRA_REFERENCE.md). Preserve historical evidence and optional device/external connectors.
+
 # Deploy — `mycobrain-jet-a`
+
+> **Network update (2026-11-27):** Device addresses below were on the garage LAN, which was decommissioned 2026-10-15 (Mycosoft has no local servers; MINDEX/MAS/website run on AWS). Confirm each device's current network address live before connecting; never assume the old 192.168.0.x address.
+
 
 ## Identify what's running today
 
 ```bash
-ssh jetson@192.168.0.228
+ssh jetson@<device-ip>
 sudo lsof -iTCP:8787 -sTCP:LISTEN
 systemctl list-units --type=service --no-legend | grep -Ei 'mycobrain|openclaw|mosquitto'
 journalctl -u "$(systemctl list-units --type=service --no-legend | grep mycobrain | head -1 | awk '{print $1}')" -n 50
@@ -27,7 +32,7 @@ journalctl -u "$(systemctl list-units --type=service --no-legend | grep mycobrai
    sudo cp /opt/mycobrain/agents/deploy/env/jetson_orin.env.example /etc/mycobrain/agent.env
    sudo nano /etc/mycobrain/agent.env
    # MYCOBRAIN_DEVICE_NICKNAME=jet-a
-   # MYCOBRAIN_HOST_IP=192.168.0.228
+   # MYCOBRAIN_HOST_IP=<device-ip>
    # MYCOBRAIN_SIDE_A_PORT=/dev/ttyTHS1
    # MYCOBRAIN_SIDE_B_PORT=/dev/ttyTHS2
    # MYCOBRAIN_OPENCLAW_ENABLED=true

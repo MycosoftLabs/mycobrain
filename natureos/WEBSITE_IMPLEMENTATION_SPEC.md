@@ -1,3 +1,5 @@
+> **AWS topology correction 2026-11-27: production is AWS-only; this file's legacy on-prem references are not deployment authority. See [AWS_INFRA_REFERENCE.md](../AWS_INFRA_REFERENCE.md) for its replacement and disposition. Loopback development and physical-device fixtures are separate.**
+
 # Website Implementation Spec — `mycosoft-website` repo
 
 ## Status
@@ -41,7 +43,7 @@ The gap is **not new routes** — it's wiring them through to `:8787` (the unifi
 Today:
 
 ```ts
-const MYCOBRAIN_VM_LAN = "http://192.168.0.196:8003"
+const MYCOBRAIN_VM_LAN = "http://mycobrain-internal.mycosoft.com:8003"
 export function resolveMycoBrainServiceUrl(): string { ... single URL ... }
 ```
 

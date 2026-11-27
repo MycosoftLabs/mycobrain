@@ -1,4 +1,9 @@
+> AWS topology correction 2026-11-27: local production servers, LAN addresses and VM/Proxmox/NAS deployment instructions are retired. Use [AWS_INFRA_REFERENCE.md](../../AWS_INFRA_REFERENCE.md). Preserve historical evidence and optional device/external connectors.
+
 # `mycobrain/devices/` — Per-Device Source of Truth
+
+> **Network update (2026-11-27):** Device addresses below were on the garage LAN, which was decommissioned 2026-10-15 (Mycosoft has no local servers; MINDEX/MAS/website run on AWS). Confirm each device's current network address live before connecting; never assume the old 192.168.0.x address.
+
 
 One folder per physical MycoBrain in operation. The folder holds:
 
@@ -12,8 +17,8 @@ One folder per physical MycoBrain in operation. The folder holds:
 
 | Folder | device_id | Host | Status |
 |--------|-----------|------|--------|
-| [`mycobrain-jet-a/`](mycobrain-jet-a/) | mycobrain-jet-a-001 | Jetson at `192.168.0.228` | LIVE |
-| [`mycobrain-pi-a/`](mycobrain-pi-a/) | mycobrain-pi-a-001 | Pi at `192.168.0.123` | LIVE |
+| [`mycobrain-jet-a/`](mycobrain-jet-a/) | mycobrain-jet-a-001 | Jetson at `<device IP — confirm live>` | LIVE |
+| [`mycobrain-pi-a/`](mycobrain-pi-a/) | mycobrain-pi-a-001 | Pi at `<device IP — confirm live>` | LIVE |
 | [`mycobrain-jet-b/`](mycobrain-jet-b/) | mycobrain-jet-b-001 | older Jetson, offline | DEAD — cold-boot pending |
 | [`mycobrain-bench/`](mycobrain-bench/) | mycobrain-bench-001 | Windows PC via COM4 | LIVE — legacy JSON firmware |
 
